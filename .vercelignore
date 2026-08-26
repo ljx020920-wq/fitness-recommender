@@ -1,0 +1,7 @@
+node_modules/
+.DS_Store
+work/
+server/feedback-log.jsonl
+.env
+.env.local
+.git/

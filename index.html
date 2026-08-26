@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>健身进阶推荐器</title>
+    <link rel="stylesheet" href="./src/styles.css?v=7" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">PF</div>
+          <div>
+            <h1>健身进阶推荐器</h1>
+            <p>连接训练记录，告诉你下一次怎么练</p>
+          </div>
+        </div>
+        <nav class="nav" id="nav"></nav>
+        <div class="sidebar-card">
+          <div class="sidebar-label">当前模式</div>
+          <div class="sidebar-value" id="goalModeBadge">增肌优先</div>
+          <p class="muted">首版 Web MVP</p>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <div class="eyebrow">训记同步状态</div>
+            <h2 id="topbarTitle">首页</h2>
+          </div>
+          <div class="topbar-actions">
+            <div class="status-pill success" id="syncStatusPill">最近同步：2 小时前</div>
+            <button class="primary ghost" id="syncNowBtn">立即同步</button>
+          </div>
+        </header>
+
+        <section id="page-root"></section>
+      </main>
+    </div>
+
+    <script type="module" src="./src/app.js?v=7"></script>
+  </body>
+</html>

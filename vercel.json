@@ -1,0 +1,16 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "github": {
+    "enabled": true,
+    "autoJobCancelation": true
+  },
+  "functions": {
+    "api/chat.js": {
+      "maxDuration": 30
+    },
+    "api/feedback.js": {
+      "maxDuration": 10
+    }
+  }
+}

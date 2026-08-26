@@ -1,0 +1,1945 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>健身进阶推荐器 - 可运行版</title>
+    <style>
+:root {
+  --bg: #0b1020;
+  --panel: #121a30;
+  --panel-soft: #19223e;
+  --line: rgba(255, 255, 255, 0.08);
+  --text: #f4f7ff;
+  --muted: #9aa7c2;
+  --brand: #7c9cff;
+  --brand-2: #8ef2d0;
+  --success: #39d98a;
+  --warning: #ffb454;
+  --neutral: #7d8aa8;
+  --shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+  background:
+    radial-gradient(circle at top right, rgba(124, 156, 255, 0.18), transparent 28%),
+    radial-gradient(circle at top left, rgba(142, 242, 208, 0.12), transparent 20%),
+    var(--bg);
+  color: var(--text);
+}
+
+body {
+  min-height: 100vh;
+}
+
+button, input, select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: 0;
+}
+
+input, select {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--text);
+  padding: 12px 14px;
+  margin-top: 8px;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.sidebar {
+  padding: 24px 18px;
+  border-right: 1px solid var(--line);
+  background: rgba(6, 10, 20, 0.66);
+  backdrop-filter: blur(14px);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.brand {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.brand h1 {
+  font-size: 18px;
+  margin: 0 0 4px;
+}
+
+.brand p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.brand-mark {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--brand), var(--brand-2));
+  color: #08111d;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nav-item {
+  background: transparent;
+  color: var(--text);
+  padding: 12px 14px;
+  text-align: left;
+  border-radius: 12px;
+  transition: 0.2s ease;
+}
+
+.nav-item:hover,
+.nav-item.active {
+  background: rgba(124, 156, 255, 0.14);
+}
+
+.sidebar-card {
+  margin-top: 22px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.sidebar-label,
+.eyebrow {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sidebar-value {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 8px 0;
+}
+
+.main {
+  padding: 26px;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.topbar h2 {
+  margin: 4px 0 0;
+  font-size: 28px;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.primary {
+  padding: 11px 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--brand), #6583ff);
+  color: white;
+  box-shadow: var(--shadow);
+}
+
+.primary.ghost {
+  background: rgba(255,255,255,0.04);
+  color: var(--text);
+  box-shadow: none;
+  border: 1px solid var(--line);
+}
+
+.card {
+  background: rgba(18, 26, 48, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 22px;
+  box-shadow: var(--shadow);
+}
+
+.hero-card.gradient {
+  background: linear-gradient(135deg, rgba(124, 156, 255, 0.25), rgba(142, 242, 208, 0.12));
+}
+
+.grid {
+  display: grid;
+  gap: 18px;
+}
+
+.cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.hero-grid .hero-card {
+  min-height: 200px;
+}
+
+.hero-grid .hero-card:first-child {
+  grid-column: span 1;
+}
+
+.stat-card {
+  min-height: 200px;
+}
+
+.big-number {
+  font-size: 30px;
+  font-weight: 800;
+  margin: 10px 0 8px;
+}
+
+.big-number.small {
+  font-size: 24px;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.chip {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 13px;
+}
+
+.chip-button {
+  border: 1px solid var(--line);
+  color: var(--text);
+}
+
+.chip-button:hover {
+  background: rgba(124, 156, 255, 0.16);
+}
+
+.chip-active {
+  background: rgba(124, 156, 255, 0.22);
+  border-color: rgba(124, 156, 255, 0.5);
+}
+
+.status-pill {
+  padding: 8px 12px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-pill.success {
+  background: rgba(57, 217, 138, 0.18);
+  color: #97f6be;
+}
+
+.status-pill.warning {
+  background: rgba(255, 180, 84, 0.18);
+  color: #ffd18b;
+}
+
+.status-pill.neutral {
+  background: rgba(125, 138, 168, 0.2);
+  color: #d8e1f4;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.card-header.align-start {
+  align-items: flex-start;
+}
+
+.card h3, .card h4 {
+  margin: 6px 0 0;
+}
+
+.section-gap {
+  margin-top: 18px;
+}
+
+.recommendation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.recommendation-row {
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+
+.recommendation-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.item-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.bullet-list {
+  margin: 12px 0 0;
+  padding-left: 18px;
+  color: #dbe5f6;
+  line-height: 1.7;
+}
+
+.bullet-list.compact {
+  margin-top: 8px;
+}
+
+.form-card.wide,
+.card.wide {
+  max-width: 1100px;
+}
+
+.form-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.form-grid label {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.actions.inline {
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+.recommendation-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.recommendation-card .recommendation-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.data-point {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 14px;
+  background: rgba(255,255,255,0.03);
+}
+
+.data-point span {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.data-point strong {
+  font-size: 18px;
+}
+
+.detail-box {
+  margin-top: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+  display: grid;
+  gap: 10px;
+  color: #dfe7f8;
+}
+
+.detail-label {
+  color: var(--muted);
+  margin-right: 10px;
+}
+
+.metric-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.metric-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.metric-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.volume-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.volume-card {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255,255,255,0.03);
+}
+
+.toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(18, 26, 48, 0.98);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: 0.22s ease;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.chat-fab {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 60px;
+  height: 60px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--brand), var(--brand-2));
+  color: #08111d;
+  font-size: 24px;
+  box-shadow: var(--shadow);
+  z-index: 1200;
+}
+
+.chat-panel {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: min(380px, calc(100vw - 32px));
+  height: min(620px, calc(100vh - 48px));
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background: rgba(18, 26, 48, 0.98);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  z-index: 1200;
+}
+
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.chat-header h3 {
+  margin: 6px 0 0;
+}
+
+.chat-close {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+  font-size: 22px;
+}
+
+.chat-messages {
+  padding: 16px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-row {
+  display: flex;
+}
+
+.chat-row-user {
+  justify-content: flex-end;
+}
+
+.chat-row-assistant {
+  justify-content: flex-start;
+}
+
+.chat-bubble {
+  max-width: 85%;
+  padding: 12px 14px;
+  border-radius: 18px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.chat-bubble-user {
+  background: linear-gradient(135deg, rgba(124, 156, 255, 0.95), rgba(101, 131, 255, 0.9));
+}
+
+.chat-bubble-assistant {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--line);
+}
+
+.chat-input-wrap {
+  padding: 14px 16px 16px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 10px;
+}
+
+.chat-input {
+  min-height: 92px;
+  resize: vertical;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  color: var(--text);
+  padding: 12px 14px;
+}
+
+.chat-send {
+  justify-self: flex-end;
+}
+
+.chat-tip {
+  font-size: 12px;
+  color: var(--warning);
+  line-height: 1.6;
+}
+
+@media (max-width: 1120px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .cols-3,
+  .cols-2,
+  .summary-grid,
+  .recommendation-card .recommendation-grid,
+  .volume-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .main {
+    padding: 16px;
+  }
+
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .topbar-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .chat-panel {
+    right: 16px;
+    bottom: 16px;
+    width: calc(100vw - 32px);
+    height: min(72vh, 640px);
+  }
+
+  .chat-fab {
+    right: 16px;
+    bottom: 16px;
+  }
+}
+
+</style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">PF</div>
+          <div>
+            <h1>健身进阶推荐器</h1>
+            <p>连接训练记录，告诉你下一次怎么练</p>
+          </div>
+        </div>
+        <nav class="nav" id="nav"></nav>
+        <div class="sidebar-card">
+          <div class="sidebar-label">当前模式</div>
+          <div class="sidebar-value" id="goalModeBadge">增肌优先</div>
+          <p class="muted">单文件可运行版</p>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <div class="eyebrow">训记同步状态</div>
+            <h2 id="topbarTitle">首页</h2>
+          </div>
+          <div class="topbar-actions">
+            <div class="status-pill success" id="syncStatusPill">最近同步：2 小时前</div>
+            <button type="button" class="primary ghost" id="syncNowBtn">立即同步</button>
+          </div>
+        </header>
+
+        <section id="page-root"></section>
+      </main>
+    </div>
+
+    <script>window.__FITNESS_STANDALONE__ = true;</script>
+    <script>
+const profileOptions = {
+  genders: ['男', '女'],
+  stressLevels: ['低', '中', '高'],
+  goals: ['增肌优先', '减脂保肌', '力量提升'],
+  splits: ['推拉腿', '上下肢', '全身'],
+  dayTypes: ['推训练日', '拉训练日', '腿训练日'],
+  nutritionPhases: ['轻盈余增肌', '维持', '减脂'],
+  proteinComplianceLevels: ['基本达标', '偶尔不足', '明显不足'],
+};
+
+const userProfile = {
+  name: 'LJX',
+  experienceMonths: 18,
+  age: 29,
+  gender: '男',
+  height: 178,
+  weight: 76.5,
+  bodyFat: 15.2,
+  goal: '增肌优先',
+  focusArea: '肩背强化',
+  split: '推拉腿',
+  daysPerWeek: 5,
+  sleepHours: 6.8,
+  stressLevel: '中',
+  activityLevel: '中',
+  nutritionPhase: '轻盈余增肌',
+  proteinCompliance: '基本达标',
+  xunjiConnected: true,
+  apiKeyMasked: 'xj_live_****_9A3F',
+  lastSyncText: '2 小时前',
+  currentDayType: '推训练日',
+};
+
+const workouts = [
+  {
+    id: 'w1',
+    date: '2026-07-01',
+    dayType: '推训练日',
+    exercises: [
+      { id: 'e1', name: '卧推', category: '主项', muscle: '胸', sets: [[70, 6], [70, 6], [70, 5]], target: '3×6', rpe: 8.5, completedAt: null },
+      { id: 'e2', name: '上斜哑铃卧推', category: '辅助', muscle: '胸上束', sets: [[28, 10], [28, 9], [28, 9]], target: '3×8-10', rpe: 8, completedAt: null },
+      { id: 'e3', name: '杠铃肩推', category: '辅助', muscle: '肩', sets: [[42.5, 8], [42.5, 7], [42.5, 7]], target: '3×8', rpe: 8.5, completedAt: null },
+      { id: 'e4', name: '侧平举', category: '孤立', muscle: '肩中束', sets: [[10, 15], [10, 14], [10, 13]], target: '3×12-15', rpe: 8, completedAt: null },
+    ],
+  },
+  {
+    id: 'w2',
+    date: '2026-06-27',
+    dayType: '推训练日',
+    exercises: [
+      { id: 'e5', name: '卧推', category: '主项', muscle: '胸', sets: [[70, 6], [70, 6], [70, 6]], target: '3×6', rpe: 8, completedAt: null },
+      { id: 'e6', name: '上斜哑铃卧推', category: '辅助', muscle: '胸上束', sets: [[26, 10], [26, 10], [26, 10]], target: '3×8-10', rpe: 7.5, completedAt: null },
+      { id: 'e7', name: '杠铃肩推', category: '辅助', muscle: '肩', sets: [[42.5, 8], [42.5, 8], [42.5, 7]], target: '3×8', rpe: 8, completedAt: null },
+      { id: 'e8', name: '侧平举', category: '孤立', muscle: '肩中束', sets: [[10, 15], [10, 15], [10, 14]], target: '3×12-15', rpe: 8, completedAt: null },
+    ],
+  },
+  {
+    id: 'w3',
+    date: '2026-06-29',
+    dayType: '拉训练日',
+    exercises: [
+      { id: 'e9', name: '负重引体', category: '主项', muscle: '背', sets: [[10, 6], [10, 6], [10, 5]], target: '3×6', rpe: 8.5, completedAt: null },
+      { id: 'e10', name: '坐姿划船', category: '辅助', muscle: '背', sets: [[65, 10], [65, 10], [65, 9]], target: '3×8-10', rpe: 8, completedAt: null },
+      { id: 'e11', name: '高位下拉', category: '辅助', muscle: '背阔', sets: [[60, 12], [60, 11], [60, 10]], target: '3×10-12', rpe: 8, completedAt: null },
+      { id: 'e12', name: '二头弯举', category: '孤立', muscle: '肱二头', sets: [[12, 12], [12, 12], [12, 11]], target: '3×10-12', rpe: 8, completedAt: null },
+    ],
+  },
+  {
+    id: 'w4',
+    date: '2026-06-30',
+    dayType: '腿训练日',
+    exercises: [
+      { id: 'e13', name: '深蹲', category: '主项', muscle: '腿', sets: [[100, 5], [100, 5], [100, 4]], target: '3×5', rpe: 9, completedAt: null },
+      { id: 'e14', name: '罗马尼亚硬拉', category: '辅助', muscle: '腿后侧', sets: [[90, 8], [90, 8], [90, 7]], target: '3×8', rpe: 8.5, completedAt: null },
+      { id: 'e15', name: '腿举', category: '辅助', muscle: '股四头', sets: [[180, 12], [180, 11], [180, 10]], target: '3×10-12', rpe: 8.5, completedAt: null },
+      { id: 'e16', name: '腿弯举', category: '孤立', muscle: '腿后侧', sets: [[40, 12], [40, 12], [40, 12]], target: '3×10-12', rpe: 8, completedAt: null },
+    ],
+  },
+];
+
+function parseTarget(target) {
+  if (!target) return { type: 'unknown' };
+  if (target.includes('×')) {
+    const [, repsPart] = target.split('×');
+    if (repsPart.includes('-')) {
+      const [min, max] = repsPart.split('-').map((v) => Number(v.trim()));
+      return { type: 'range', min, max };
+    }
+    return { type: 'fixed', reps: Number(repsPart.trim()) };
+  }
+  return { type: 'unknown' };
+}
+
+function isValidSet(setItem) {
+  return Array.isArray(setItem)
+    && setItem.length >= 2
+    && typeof setItem[0] === 'number'
+    && typeof setItem[1] === 'number'
+    && setItem[0] > 0
+    && setItem[1] > 0;
+}
+
+function sumReps(sets) {
+  return sets.reduce((sum, [, reps]) => sum + reps, 0);
+}
+
+function averageRpe(exerciseEntries) {
+  const rpes = exerciseEntries.map((item) => item.rpe).filter((value) => typeof value === 'number');
+  if (!rpes.length) return null;
+  return rpes.reduce((a, b) => a + b, 0) / rpes.length;
+}
+
+function classifyRecovery(profile, workouts) {
+  const recentWorkouts = [...workouts]
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .slice(0, 3);
+
+  const poorSleep = profile.sleepHours < 6.2;
+  const highStress = profile.stressLevel === '高';
+  const painRisk = profile.painStatus && profile.painStatus !== '无';
+  const hardSessions = recentWorkouts.flatMap((w) => w.exercises).filter((e) => e.rpe && e.rpe >= 9).length;
+
+  if (painRisk || (poorSleep && highStress) || hardSessions >= 3) {
+    return { level: 'high', label: '恢复压力偏高', tip: '本周建议保住主项质量，减少部分辅助训练量。' };
+  }
+  if (poorSleep || highStress || hardSessions >= 2) {
+    return { level: 'medium', label: '恢复一般', tip: '可以继续推进，但不建议全动作一起冲重量。' };
+  }
+  return { level: 'low', label: '恢复良好', tip: '恢复状态支持正常推进。' };
+}
+
+function recommendDelta(category, action) {
+  if (action !== 'add') return null;
+  if (category === '主项') return '上肢 +2.5kg / 下肢 +2.5~5kg';
+  if (category === '辅助') return '小幅加重 2~5%';
+  return '优先加次数或增加 1 组';
+}
+
+function buildDashboard(profile, workouts) {
+  const recovery = classifyRecovery(profile, workouts);
+  const today = workouts.find((w) => w.dayType === profile.currentDayType) ?? workouts[0];
+  const recommendations = buildWorkoutRecommendations(profile, workouts, today.dayType);
+
+  const improving = recommendations.exerciseRecommendations.filter((item) => item.action === 'add').map((item) => item.name);
+  const stalled = recommendations.exerciseRecommendations.filter((item) => item.action === 'maintain').map((item) => item.name);
+  const fatigue = recommendations.exerciseRecommendations.filter((item) => item.action === 'reduce').map((item) => item.name);
+
+  return {
+    recovery,
+    todaySummary: recommendations,
+    improving,
+    stalled,
+    fatigue,
+  };
+}
+
+function buildWorkoutRecommendations(profile, workouts, dayType, preference = 'standard') {
+  const matched = workouts.filter((w) => w.dayType === dayType).sort((a, b) => new Date(b.date) - new Date(a.date));
+  const latest = matched[0];
+  const recovery = classifyRecovery(profile, workouts);
+
+  if (!latest) {
+    return {
+      dayType,
+      latestDate: null,
+      recovery,
+      dayStatus: '数据不足',
+      daySummary: '当前训练日数据不足，建议先完成一次训练记录后再生成推荐。',
+      exerciseRecommendations: [],
+      weeklyAdvice: '建议先同步最近 2-6 周训练记录，再生成更可靠的计划。',
+      nutritionAdvice: '饮食部分首版仅做提醒，先保持蛋白质和总热量稳定。',
+    };
+  }
+
+  let exerciseRecommendations = latest.exercises.map((exercise) => {
+    const parsedExerciseTarget = parseTarget(exercise.target);
+    if (!Array.isArray(exercise.sets) || exercise.sets.length === 0 || exercise.sets.some((setItem) => !isValidSet(setItem)) || parsedExerciseTarget.type === 'unknown') {
+      return {
+        id: exercise.id,
+        name: exercise.name,
+        category: exercise.category ?? '辅助',
+        muscle: exercise.muscle ?? '未知肌群',
+        averageRpe: typeof exercise.rpe === 'number' ? exercise.rpe : null,
+        action: 'maintain',
+        actionLabel: '维持',
+        targetWeight: Array.isArray(exercise.sets) && exercise.sets[0]?.[0] ? exercise.sets[0][0] : '-',
+        targetSets: Array.isArray(exercise.sets) ? exercise.sets.length : 0,
+        targetRepsRange: exercise.target ?? '未知',
+        intensity: '请先检查数据',
+        deltaHint: null,
+        explanation: '该动作数据异常，建议检查训练记录',
+        currentWeight: Array.isArray(exercise.sets) && exercise.sets[0]?.[0] ? exercise.sets[0][0] : '-',
+        currentReps: Array.isArray(exercise.sets) ? exercise.sets.map((setItem) => Array.isArray(setItem) ? setItem[1] : '?').join(' / ') : '-',
+      };
+    }
+
+    const history = matched
+      .map((session) => session.exercises.find((item) => item.name === exercise.name))
+      .filter(Boolean)
+      .slice(0, 3);
+
+    const current = history[0];
+    const prev = history[1];
+    const historyAverageRpe = averageRpe(history);
+    const target = parseTarget(current.target);
+    const reps = current.sets.map(([, rep]) => rep);
+    const prevReps = prev ? prev.sets.map(([, rep]) => rep) : [];
+    const currentWeight = current.sets[0][0];
+    const currentTotalReps = sumReps(current.sets);
+    const prevTotalReps = prev ? sumReps(prev.sets) : null;
+    const targetTotalReps = target.type === 'fixed' ? target.reps * current.sets.length : null;
+
+    let action = 'maintain';
+    let actionLabel = '维持';
+    let explanation = '当前表现接近目标，建议先巩固。';
+    let targetWeight = currentWeight;
+    let targetSets = current.sets.length;
+    let targetRepsRange = current.target.replace('×', ' × ');
+    let intensity = '保留 1-2 次余力';
+
+    if (target.type === 'fixed') {
+      const allHit = reps.every((rep) => rep >= target.reps);
+      const previousStable = prev ? prevReps.every((rep) => rep >= target.reps) : false;
+      const missBy = Math.max(0, targetTotalReps - currentTotalReps);
+      const prevMissBy = prevTotalReps == null ? null : Math.max(0, targetTotalReps - prevTotalReps);
+      const nearHit = missBy <= 1;
+      const clearlyDown = prevTotalReps != null && currentTotalReps <= prevTotalReps - 2;
+
+      if (allHit && previousStable && recovery.level !== 'high' && !(historyAverageRpe != null && historyAverageRpe >= 9)) {
+        action = 'add';
+        actionLabel = '加重';
+        targetWeight = current.category === '主项' ? currentWeight + (dayType === '腿训练日' ? 5 : 2.5) : Number((currentWeight * 1.025).toFixed(1));
+        explanation = `最近两次都完成目标组次，${exercise.category === '主项' ? '建议小幅加重继续推进。' : '建议小幅加重后重新从目标下限开始。'}`;
+      } else if (allHit && previousStable && historyAverageRpe != null && historyAverageRpe >= 9) {
+        explanation = '虽然已完成目标组次，但近期训练强度偏高，建议先维持重量。';
+      } else if (nearHit && previousStable) {
+        explanation = '距离稳定加重只差 1 次，建议本次先维持重量，把最后一组补齐。';
+      } else if (prev && prevMissBy != null && missBy >= 3 && clearlyDown && recovery.level !== 'low') {
+        action = 'reduce';
+        actionLabel = '减量';
+        targetSets = Math.max(2, current.sets.length - 1);
+        explanation = '近期完成度连续下降，且恢复状态一般，建议短暂减量保留动作质量。';
+        intensity = '不要练到力竭';
+      } else {
+        explanation = '还没有稳定完成目标组次，建议先维持当前重量巩固一次。';
+      }
+    }
+
+    if (target.type === 'range') {
+      const allTop = reps.every((rep) => rep >= target.max);
+      const allAtLeastMin = reps.every((rep) => rep >= target.min);
+      if (allTop && recovery.level === 'low' && !(historyAverageRpe != null && historyAverageRpe >= 9)) {
+        action = 'add';
+        actionLabel = '加重';
+        targetWeight = current.category === '孤立' ? currentWeight : Number((currentWeight * 1.05).toFixed(1));
+        explanation = '上次所有工作组都达到区间上限，建议加重后从区间下限重新推进。';
+      } else if (allTop && historyAverageRpe != null && historyAverageRpe >= 9) {
+        explanation = '近期训练强度偏高，虽然达到上限，仍建议先维持重量。';
+      } else if ((!allAtLeastMin && recovery.level === 'high') || (recovery.level === 'high' && current.category !== '主项')) {
+        action = 'reduce';
+        actionLabel = '减量';
+        if (current.category === '孤立') {
+          targetSets = Math.max(2, current.sets.length - 1);
+          explanation = '当前恢复压力偏高，孤立动作本次建议减少 1 组。';
+        } else {
+          explanation = '当前未稳定处于目标区间，建议保守处理，先控制训练量。';
+        }
+      } else if (!allAtLeastMin) {
+        explanation = '当前次数还没稳定站上目标区间，建议先把次数补回下限。';
+      } else {
+        explanation = '仍有继续补次数空间，建议先维持重量把次数补满。';
+      }
+    }
+
+    if (recovery.level === 'medium' && action === 'add' && current.category !== '主项') {
+      action = 'maintain';
+      actionLabel = '维持';
+      targetWeight = currentWeight;
+      explanation = '虽然已接近加重条件，但当前恢复一般，建议先维持并巩固动作质量。';
+    }
+
+    if (recovery.level === 'high' && current.category !== '主项') {
+      action = 'reduce';
+      actionLabel = '减量';
+      targetSets = Math.max(2, current.sets.length - 1);
+      targetWeight = currentWeight;
+      explanation = '本周恢复压力偏高，建议减少辅助或孤立动作总量。';
+      intensity = '全程保留 2 次以上余力';
+    }
+
+    return {
+      id: exercise.id,
+      name: exercise.name,
+      category: exercise.category,
+      muscle: exercise.muscle,
+      averageRpe: historyAverageRpe,
+      action,
+      actionLabel,
+      targetWeight,
+      targetSets,
+      targetRepsRange,
+      intensity,
+      deltaHint: recommendDelta(exercise.category, action),
+      explanation,
+      currentWeight,
+      currentReps: reps.join(' / '),
+    };
+  });
+
+  if (preference === 'low_fatigue') {
+    exerciseRecommendations = exerciseRecommendations.map((item) => {
+      if (item.category === '主项') {
+        return {
+          ...item,
+          action: 'maintain',
+          actionLabel: '维持',
+          explanation: `${item.explanation} 今日选择了“状态一般”模式，主项不建议加重。`,
+        };
+      }
+      return {
+        ...item,
+        action: 'reduce',
+        actionLabel: '减量',
+        targetSets: Math.max(1, item.targetSets - 1),
+        explanation: `${item.explanation} 今日状态一般，辅助动作减少 1 组。`,
+      };
+    });
+  }
+
+  if (preference === 'quick') {
+    const primary = exerciseRecommendations.find((item) => item.category === '主项');
+    const supports = exerciseRecommendations.filter((item) => item.category === '辅助').slice(0, 2);
+    exerciseRecommendations = [primary, ...supports].filter(Boolean);
+  }
+
+  if (preference === 'glute' && dayType === '腿训练日') {
+    exerciseRecommendations = exerciseRecommendations.map((item) => {
+      if (item.name === '罗马尼亚硬拉') {
+        return {
+          ...item,
+          targetSets: item.targetSets + 1,
+          explanation: `${item.explanation} 臀腿偏翘臀模式下，增加 1 组强化臀腿后侧。`,
+        };
+      }
+      if (item.name === '腿举') {
+        return {
+          ...item,
+          explanation: `${item.explanation} 臀腿偏翘臀模式下，建议优先考虑臀推或偏臀分腿蹲替代。`,
+        };
+      }
+      return item;
+    }).sort((a, b) => {
+      const priority = { '深蹲': 1, '罗马尼亚硬拉': 2, '腿弯举': 3, '腿举': 4 };
+      return (priority[a.name] ?? 99) - (priority[b.name] ?? 99);
+    });
+  }
+
+  if (preference === 'quad' && dayType === '腿训练日') {
+    exerciseRecommendations = exerciseRecommendations.map((item) => {
+      if (item.name === '腿举') {
+        return {
+          ...item,
+          targetSets: item.targetSets + 1,
+          explanation: `${item.explanation} 股四头偏置模式下，增加 1 组并建议采用更低脚位。`,
+        };
+      }
+      if (item.name === '深蹲') {
+        return {
+          ...item,
+          explanation: `${item.explanation} 股四头偏置模式下，深蹲继续作为优先主项保留。`,
+        };
+      }
+      return item;
+    });
+  }
+
+  const addCount = exerciseRecommendations.filter((item) => item.action === 'add').length;
+  const reduceCount = exerciseRecommendations.filter((item) => item.action === 'reduce').length;
+  let dayStatus = '正常推进';
+  let daySummary = '今天适合按照计划推进，优先关注主项质量。';
+
+  if (recovery.level === 'medium') {
+    dayStatus = '保守推进';
+    daySummary = '可以继续练，但不建议所有动作一起冲重量。';
+  }
+  if (recovery.level === 'high' || reduceCount >= 2) {
+    dayStatus = '恢复控制';
+    daySummary = '本次优先保留主项刺激，辅助动作适当减量。';
+  } else if (recovery.level === 'low' && addCount === 0) {
+    dayStatus = '正常推进';
+    daySummary = '今天更适合巩固现有重量，优先把动作完成质量做稳。';
+  }
+
+  return {
+    dayType,
+    latestDate: latest.date,
+    recovery,
+    dayStatus,
+    daySummary,
+    exerciseRecommendations,
+    weeklyAdvice: recovery.level === 'high'
+      ? '建议本周后半段把总量下调 10%-20%，避免连续高疲劳。'
+      : '本周可继续推进，若下次主项再次达标，可考虑小幅加重。',
+    nutritionAdvice: profile.proteinCompliance === '基本达标'
+      ? '饮食方面保持蛋白质稳定即可，暂不需要大改。'
+      : '蛋白质摄入可能影响恢复，建议先提高稳定度。',
+  };
+}
+
+function buildAnalysis(profile, workouts) {
+  const groups = {};
+  for (const workout of workouts) {
+    for (const exercise of workout.exercises) {
+      groups[exercise.muscle] ??= { volume: 0, effectiveSets: 0 };
+      groups[exercise.muscle].volume += exercise.sets.reduce((sum, [weight, reps]) => sum + weight * reps, 0);
+      groups[exercise.muscle].effectiveSets += typeof exercise.rpe === 'number' && exercise.rpe >= 6 ? exercise.sets.length : 0;
+    }
+  }
+
+  const volumeSummary = Object.entries(groups)
+    .map(([muscle, value]) => ({
+      muscle,
+      volume: Math.round(value.volume),
+      effectiveSets: value.effectiveSets,
+      level: value.effectiveSets < 10 ? '偏低' : value.effectiveSets > 20 ? '偏高' : '适中',
+      note: '基于现有数据估算',
+    }))
+    .sort((a, b) => b.volume - a.volume);
+
+  const dayTypes = ['推训练日', '拉训练日', '腿训练日'];
+  const allRecommendations = dayTypes.flatMap((dayType) => buildWorkoutRecommendations(profile, workouts, dayType).exerciseRecommendations.map((item) => ({ ...item, dayType })));
+  const plateauCandidates = allRecommendations.filter((item) => item.action === 'maintain');
+
+  const firstAdd = allRecommendations.find((item) => item.action === 'add');
+  const nearHit = allRecommendations.find((item) => item.action === 'maintain' && typeof item.explanation === 'string' && item.explanation.includes('只差 1 次'));
+  const highRpe = allRecommendations.find((item) => typeof item.averageRpe === 'number' && item.averageRpe >= 9);
+  const lowVolumeGroups = volumeSummary.filter((item) => item.level === '偏低');
+
+  const diagnosis = [];
+  if (firstAdd) {
+    diagnosis.push(`因为 ${firstAdd.dayType} 的 ${firstAdd.name} 已达到加重条件，所以建议优先作为下一步进阶动作。`);
+  } else if (nearHit) {
+    diagnosis.push(`因为 ${nearHit.dayType} 的 ${nearHit.name} 距离加重只差一步，所以建议先把当前重量稳定完成再推进。`);
+  }
+
+  if (highRpe) {
+    diagnosis.push(`因为 ${highRpe.dayType} 的 ${highRpe.name} 近期平均 RPE 偏高，所以建议先维持重量，避免盲目继续加重。`);
+  }
+
+  if (lowVolumeGroups.length) {
+    diagnosis.push(`因为 ${lowVolumeGroups.map((item) => item.muscle).join('、')} 的有效组数偏低，所以建议后续适当补充这些肌群的训练量。`);
+  }
+
+  return {
+    volumeSummary,
+    plateauCandidates,
+    diagnosis,
+  };
+}
+
+
+const state = {
+  currentPage: 'dashboard',
+  profile: loadProfile(),
+  workouts: loadWorkouts(),
+  todayPreference: 'standard',
+  syncLog: loadSyncLog(),
+  chatOpen: false,
+  chatLoading: false,
+  chatInput: '',
+  chatMessages: loadChatMessages(),
+};
+
+const isStandaloneMode = Boolean(window.__FITNESS_STANDALONE__) || window.location.protocol === 'file:' || window.location.pathname.includes('fitness_recommender_standalone.html');
+
+function defaultProfile() {
+  return JSON.parse(JSON.stringify(userProfile));
+}
+
+function loadProfile() {
+  try {
+    const saved = localStorage.getItem('fitness-profile-demo');
+    if (!saved) return defaultProfile();
+    return { ...defaultProfile(), ...JSON.parse(saved) };
+  } catch {
+    return defaultProfile();
+  }
+}
+
+function loadWorkouts() {
+  try {
+    const saved = localStorage.getItem('fitness-workouts-demo');
+    if (!saved) return normalizeWorkouts(JSON.parse(JSON.stringify(workouts)));
+    return normalizeWorkouts(JSON.parse(saved));
+  } catch {
+    return normalizeWorkouts(JSON.parse(JSON.stringify(workouts)));
+  }
+}
+
+function normalizeWorkouts(sourceWorkouts) {
+  return (sourceWorkouts ?? []).map((workout, workoutIndex) => ({
+    ...workout,
+    id: workout.id ?? `w${workoutIndex + 1}`,
+    exercises: (workout.exercises ?? []).map((exercise, exerciseIndex) => ({
+      ...exercise,
+      id: exercise.id ?? `e${workoutIndex + 1}-${exerciseIndex + 1}`,
+      completedAt: exercise.completedAt ?? null,
+    })),
+  }));
+}
+
+function defaultSyncLog() {
+  return [
+    { time: '2026/08/12 09:20:00', message: '同步成功，新增 1 次训练记录' },
+    { time: '2026/08/11 21:16:00', message: '同步成功，新增 4 条动作记录' },
+    { time: '2026/08/11 09:15:00', message: '同步成功，未发现新数据' },
+  ];
+}
+
+function loadSyncLog() {
+  try {
+    const saved = localStorage.getItem('fitness-sync-log-demo');
+    if (!saved) return defaultSyncLog();
+    return JSON.parse(saved);
+  } catch {
+    return defaultSyncLog();
+  }
+}
+
+function defaultChatMessages() {
+  return [
+    {
+      role: 'assistant',
+      content: isStandaloneMode
+        ? '对话功能需要启动后端服务，请参考 README 使用 npm run dev 启动。'
+        : '你好，我是你的 AI 健身教练。你可以直接问我今天怎么练、要不要加重，或者让我解释推荐结果。',
+    },
+  ];
+}
+
+function loadChatMessages() {
+  try {
+    const saved = localStorage.getItem('fitness-chat-demo');
+    if (!saved) return defaultChatMessages();
+    return JSON.parse(saved);
+  } catch {
+    return defaultChatMessages();
+  }
+}
+
+function saveProfile() {
+  try {
+    localStorage.setItem('fitness-profile-demo', JSON.stringify(state.profile));
+    localStorage.setItem('fitness-workouts-demo', JSON.stringify(state.workouts));
+    localStorage.setItem('fitness-sync-log-demo', JSON.stringify(state.syncLog));
+    localStorage.setItem('fitness-chat-demo', JSON.stringify(state.chatMessages));
+  } catch {
+    // 本地文件打开时，某些浏览器可能禁止 localStorage
+  }
+}
+
+function addSyncLog(message) {
+  state.syncLog.unshift({
+    time: new Date().toLocaleString('zh-CN'),
+    message,
+  });
+  state.syncLog = state.syncLog.slice(0, 10);
+}
+
+function computeState() {
+  return {
+    dashboard: buildDashboard(state.profile, state.workouts),
+    today: buildWorkoutRecommendations(state.profile, state.workouts, state.profile.currentDayType, state.todayPreference),
+    analysis: buildAnalysis(state.profile, state.workouts),
+  };
+}
+
+function selectField({ name, label, value, options }) {
+  return `
+    <label>${label}
+      <select name="${name}">
+        ${options.map((option) => `<option value="${option}" ${option === value ? 'selected' : ''}>${option}</option>`).join('')}
+      </select>
+    </label>
+  `;
+}
+
+function numericField({ name, label, value, min, max, step = '1' }) {
+  return `<label>${label}<input name="${name}" type="number" value="${value}" min="${min}" max="${max}" step="${step}" /></label>`;
+}
+
+const navItems = [
+  { key: 'dashboard', label: '首页' },
+  { key: 'profile', label: '首次建档' },
+  { key: 'connect', label: '训记连接' },
+  { key: 'today', label: '今日建议' },
+  { key: 'analysis', label: '训练分析' },
+  { key: 'sync', label: '数据同步' },
+  { key: 'settings', label: '个人设置' },
+];
+
+const nav = document.querySelector('#nav');
+const root = document.querySelector('#page-root');
+const topbarTitle = document.querySelector('#topbarTitle');
+const syncStatusPill = document.querySelector('#syncStatusPill');
+const goalModeBadge = document.querySelector('#goalModeBadge');
+const syncNowBtn = document.querySelector('#syncNowBtn');
+
+function refreshHeader() {
+  goalModeBadge.textContent = state.profile.goal;
+  syncStatusPill.textContent = `最近同步：${state.profile.lastSyncText}`;
+}
+
+refreshHeader();
+
+syncNowBtn.addEventListener('click', () => {
+  syncStatusPill.textContent = '同步中…';
+  setTimeout(() => {
+    state.profile.lastSyncText = '刚刚';
+    addSyncLog('同步成功，已刷新当前训练建议');
+    saveProfile();
+    refreshHeader();
+    renderToast('已完成一次模拟同步，推荐结果已刷新。');
+    render();
+  }, 900);
+});
+
+function renderNav() {
+  nav.innerHTML = navItems
+    .map(
+      (item) => `
+        <button class="nav-item ${state.currentPage === item.key ? 'active' : ''}" data-page="${item.key}">
+          ${item.label}
+        </button>
+      `,
+    )
+    .join('');
+
+  nav.querySelectorAll('[data-page]').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.currentPage = button.dataset.page;
+      render();
+    });
+  });
+}
+
+function badgeClass(action) {
+  if (action === '加重') return 'success';
+  if (action === '减量') return 'warning';
+  return 'neutral';
+}
+
+function renderDashboard(derived) {
+  const { recovery, todaySummary, improving, stalled, fatigue } = derived.dashboard;
+  return `
+    <section class="grid cols-3 hero-grid">
+      <article class="card hero-card gradient">
+        <div class="eyebrow">当前训练状态</div>
+        <h3>${todaySummary.dayStatus}</h3>
+        <p>${todaySummary.daySummary}</p>
+        <div class="chip-row">
+          <span class="chip">目标：${state.profile.goal}</span>
+          <span class="chip">当前训练日：${state.profile.currentDayType}</span>
+        </div>
+      </article>
+
+      <article class="card stat-card">
+        <div class="eyebrow">恢复情况</div>
+        <div class="big-number">${recovery.label}</div>
+        <p>${recovery.tip}</p>
+      </article>
+
+      <article class="card stat-card">
+        <div class="eyebrow">今日关键结论</div>
+        <ul class="bullet-list compact">
+          ${todaySummary.exerciseRecommendations.slice(0, 3).map((item) => `<li>${item.name}：${item.actionLabel}</li>`).join('')}
+        </ul>
+      </article>
+    </section>
+
+    <section class="grid cols-2 section-gap">
+      <article class="card">
+        <div class="card-header">
+          <div>
+            <div class="eyebrow">今日建议摘要</div>
+            <h3>${todaySummary.dayType}</h3>
+          </div>
+          <button type="button" class="primary" data-jump="today">查看完整建议</button>
+        </div>
+        <div class="recommendation-list short">
+          ${todaySummary.exerciseRecommendations.map((item) => `
+            <div class="recommendation-row">
+              <div>
+                <div class="item-title">${item.name}</div>
+                <div class="muted">建议 ${item.targetWeight}${typeof item.targetWeight === 'number' ? ' kg' : ''} · ${item.targetSets} 组 · ${item.targetRepsRange}</div>
+              </div>
+              <span class="status-pill ${badgeClass(item.actionLabel)}">${item.actionLabel}</span>
+            </div>
+          `).join('')}
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="eyebrow">近期状态摘要</div>
+        <div class="summary-grid">
+          <div>
+            <h4>适合推进</h4>
+            <ul class="bullet-list">${(improving.length ? improving : ['暂无明显加重动作']).map((name) => `<li>${name}</li>`).join('')}</ul>
+          </div>
+          <div>
+            <h4>建议巩固</h4>
+            <ul class="bullet-list">${(stalled.length ? stalled : ['暂无']).map((name) => `<li>${name}</li>`).join('')}</ul>
+          </div>
+          <div>
+            <h4>疲劳偏高</h4>
+            <ul class="bullet-list">${(fatigue.length ? fatigue : ['暂无']).map((name) => `<li>${name}</li>`).join('')}</ul>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="grid cols-2 section-gap">
+      <article class="card">
+        <div class="eyebrow">恢复与饮食提醒</div>
+        <ul class="bullet-list">
+          <li>最近平均睡眠 ${state.profile.sleepHours} 小时，建议本周至少 2 天补足到 7 小时以上。</li>
+          <li>当前饮食阶段：${state.profile.nutritionPhase}，保持蛋白质稳定即可。</li>
+          <li>如果今晚睡眠不足，明天主项优先维持，不建议额外冲重量。</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <div class="eyebrow">周期建议</div>
+        <ul class="bullet-list">
+          <li>${todaySummary.weeklyAdvice}</li>
+          <li>${state.profile.focusArea}是当前强化方向，本周可优先保证相关动作完整执行。</li>
+          <li>若卧推下次完成 70kg 3×6，可再考虑加到 72.5kg。</li>
+        </ul>
+      </article>
+    </section>
+  `;
+}
+
+function renderProfile() {
+  return `
+    <section class="card form-card wide">
+      <div class="card-header">
+        <div>
+          <div class="eyebrow">首次建档</div>
+          <h3>你的当前训练画像</h3>
+        </div>
+        <span class="status-pill neutral">可直接修改</span>
+      </div>
+      <form id="profileForm" class="form-grid cols-2">
+        ${selectField({ name: 'gender', label: '性别', value: state.profile.gender, options: profileOptions.genders })}
+        ${numericField({ name: 'age', label: '年龄', value: state.profile.age, min: 16, max: 80 })}
+        ${numericField({ name: 'height', label: '身高（cm）', value: state.profile.height, min: 130, max: 230 })}
+        ${numericField({ name: 'weight', label: '体重（kg）', value: state.profile.weight, min: 30, max: 200, step: '0.1' })}
+        ${numericField({ name: 'bodyFat', label: '体脂率（%）', value: state.profile.bodyFat, min: 3, max: 60, step: '0.1' })}
+        ${numericField({ name: 'experienceMonths', label: '训练经验（月）', value: state.profile.experienceMonths, min: 0, max: 600 })}
+        ${selectField({ name: 'split', label: '训练分化', value: state.profile.split, options: profileOptions.splits })}
+        ${numericField({ name: 'daysPerWeek', label: '每周训练天数', value: state.profile.daysPerWeek, min: 1, max: 7 })}
+        ${selectField({ name: 'goal', label: '主目标', value: state.profile.goal, options: profileOptions.goals })}
+        <label>强化部位<input name="focusArea" value="${state.profile.focusArea}" /></label>
+        ${numericField({ name: 'sleepHours', label: '平均睡眠（小时）', value: state.profile.sleepHours, min: 0, max: 24, step: '0.1' })}
+        ${selectField({ name: 'stressLevel', label: '压力等级', value: state.profile.stressLevel, options: profileOptions.stressLevels })}
+        ${selectField({ name: 'currentDayType', label: '当前训练日', value: state.profile.currentDayType, options: profileOptions.dayTypes })}
+        <label>疼痛/旧伤<input name="painStatus" value="${state.profile.painStatus ?? '无'}" /></label>
+      </form>
+      <div class="actions inline">
+        <button type="button" class="primary" data-save="profileForm">保存档案</button>
+        <button type="button" class="primary ghost" data-reset-profile>恢复示例</button>
+      </div>
+    </section>
+  `;
+}
+
+function renderConnect() {
+  return `
+    <section class="grid cols-2">
+      <article class="card">
+        <div class="eyebrow">训记连接</div>
+        <h3>已连接训练记录</h3>
+        <p>首版会通过训记 API Key 同步你的训练日期、动作、组数、重量、次数和部分主观强度信息。</p>
+        <label>API Key
+          <input id="apiKeyInput" value="${state.profile.apiKeyMasked}" />
+        </label>
+        <div class="actions inline">
+          <button type="button" class="primary" data-update-key>保存 Key</button>
+          <button type="button" class="primary ghost" data-mock-sync>测试同步</button>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="eyebrow">首次同步结果</div>
+        <div class="metric-list">
+          <div class="metric-row"><span>导入训练天数</span><strong>14 天</strong></div>
+          <div class="metric-row"><span>导入动作条目</span><strong>46 条</strong></div>
+          <div class="metric-row"><span>记录时间范围</span><strong>近 6 周</strong></div>
+          <div class="metric-row"><span>最近同步</span><strong>${state.profile.lastSyncText}</strong></div>
+        </div>
+      </article>
+    </section>
+  `;
+}
+
+function renderToday(derived) {
+  const plan = derived.today;
+  const customization = buildTodayCustomization(plan);
+  return `
+    <section class="card hero-card">
+      <div class="eyebrow">今日训练建议</div>
+      <h3>${plan.dayType} · ${plan.dayStatus}</h3>
+      <p>${plan.daySummary}</p>
+      <div class="chip-row">
+        <span class="chip">最近训练：${plan.latestDate ?? '暂无'}</span>
+        <span class="chip">恢复：${plan.recovery.label}</span>
+      </div>
+    </section>
+
+    <section class="card section-gap">
+      <div class="card-header">
+        <div>
+          <div class="eyebrow">按今天目标微调</div>
+          <h3>你今天想怎么练</h3>
+        </div>
+      </div>
+      <div class="chip-row preference-row">
+        <button type="button" class="chip chip-button ${state.todayPreference === 'standard' ? 'chip-active' : ''}" data-pref="standard">标准推进</button>
+        <button type="button" class="chip chip-button ${state.todayPreference === 'glute' ? 'chip-active' : ''}" data-pref="glute">臀腿偏翘臀</button>
+        <button type="button" class="chip chip-button ${state.todayPreference === 'quad' ? 'chip-active' : ''}" data-pref="quad">腿部偏股四</button>
+        <button type="button" class="chip chip-button ${state.todayPreference === 'low_fatigue' ? 'chip-active' : ''}" data-pref="low_fatigue">今天状态一般</button>
+        <button type="button" class="chip chip-button ${state.todayPreference === 'quick' ? 'chip-active' : ''}" data-pref="quick">45 分钟快练</button>
+      </div>
+      <div class="detail-box">
+        <div><span class="detail-label">当前模式</span>${customization.title}</div>
+        <div><span class="detail-label">微调说明</span>${customization.summary}</div>
+        <div>
+          <span class="detail-label">建议调整</span>
+          <ul class="bullet-list compact">
+            ${customization.items.map((item) => `<li>${item}</li>`).join('')}
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="recommendation-stack section-gap">
+      ${plan.exerciseRecommendations.map((item) => `
+        <article class="card recommendation-card">
+          <div class="card-header align-start">
+            <div>
+              <div class="eyebrow">${item.category} · ${item.muscle}</div>
+              <h3>${item.name}</h3>
+            </div>
+            <span class="status-pill ${badgeClass(item.actionLabel)}">${item.actionLabel}</span>
+          </div>
+          <div class="recommendation-grid">
+            <div class="data-point"><span>建议重量</span><strong>${item.targetWeight}${typeof item.targetWeight === 'number' ? ' kg' : ''}</strong></div>
+            <div class="data-point"><span>建议组数</span><strong>${item.targetSets} 组</strong></div>
+            <div class="data-point"><span>建议次数</span><strong>${item.targetRepsRange}</strong></div>
+            <div class="data-point"><span>强度提醒</span><strong>${item.intensity}</strong></div>
+          </div>
+          <div class="detail-box">
+            <div><span class="detail-label">上次表现</span>${item.currentWeight} kg · ${item.currentReps}</div>
+            <div><span class="detail-label">建议原因</span>${item.explanation}</div>
+            ${item.deltaHint ? `<div><span class="detail-label">进阶提示</span>${item.deltaHint}</div>` : ''}
+          </div>
+        </article>
+      `).join('') || '<article class="card"><p>当前训练日暂无足够数据。</p></article>'}
+    </section>
+
+    <section class="grid cols-2 section-gap">
+      <article class="card">
+        <div class="eyebrow">本次训练总提醒</div>
+        <ul class="bullet-list">
+          <li>主项优先保证动作质量，不建议最后一组盲目拼极限。</li>
+          <li>如果热身时状态偏差，先维持重量，不强求加重。</li>
+          <li>${plan.weeklyAdvice}</li>
+        </ul>
+      </article>
+      <article class="card">
+        <div class="eyebrow">恢复与饮食提醒</div>
+        <ul class="bullet-list">
+          <li>${plan.nutritionAdvice}</li>
+          <li>今天训练后优先补充蛋白质和碳水，帮助恢复。</li>
+          <li>若连续两天睡眠不足，下一次训练自动切换为保守推进更合适。</li>
+        </ul>
+      </article>
+    </section>
+  `;
+}
+
+function renderAnalysis(derived) {
+  const analysis = derived.analysis;
+  return `
+    <section class="grid cols-2">
+      <article class="card">
+        <div class="eyebrow">关键诊断</div>
+        <ul class="bullet-list">
+          ${analysis.diagnosis.map((item) => `<li>${item}</li>`).join('')}
+        </ul>
+      </article>
+      <article class="card">
+        <div class="eyebrow">疑似平台动作</div>
+        <div class="recommendation-list short">
+          ${analysis.plateauCandidates.map((item) => `
+            <div class="recommendation-row">
+              <div>
+                <div class="item-title">${item.name}</div>
+                <div class="muted">${item.explanation}</div>
+              </div>
+              <span class="status-pill neutral">巩固</span>
+            </div>
+          `).join('')}
+        </div>
+      </article>
+    </section>
+
+    <section class="card section-gap">
+      <div class="card-header">
+        <div>
+          <div class="eyebrow">肌群训练量概览</div>
+          <h3>按最近训练记录统计</h3>
+        </div>
+      </div>
+      <div class="volume-grid">
+        ${analysis.volumeSummary.map((row) => `
+          <div class="volume-card">
+            <div class="item-title">${row.muscle}</div>
+            <div class="big-number small">${row.volume}</div>
+            <span class="status-pill ${row.level === '偏低' ? 'warning' : 'success'}">${row.level}</span>
+            <div class="muted">有效组：${row.effectiveSets} · ${row.note}</div>
+          </div>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function renderSync() {
+  return `
+    <section class="grid cols-2">
+      <article class="card">
+        <div class="eyebrow">连接状态</div>
+        <div class="metric-list">
+          <div class="metric-row"><span>训记状态</span><strong>${state.profile.xunjiConnected ? '已连接' : '未连接'}</strong></div>
+          <div class="metric-row"><span>API Key</span><strong>${state.profile.apiKeyMasked}</strong></div>
+          <div class="metric-row"><span>最近成功同步</span><strong>${state.profile.lastSyncText}</strong></div>
+        </div>
+        <div class="actions inline">
+          <button type="button" class="primary" data-mock-sync>立即同步</button>
+          <button type="button" class="primary ghost" data-page-jump="connect">更新 Key</button>
+        </div>
+      </article>
+      <article class="card">
+        <div class="eyebrow">同步记录</div>
+        <ul class="bullet-list">
+          ${state.syncLog.map((item) => `<li>${item.time}：${item.message}</li>`).join('')}
+        </ul>
+      </article>
+    </section>
+  `;
+}
+
+function renderSettings() {
+  return `
+    <section class="card form-card wide">
+      <div class="eyebrow">个人设置</div>
+      <form id="settingsForm" class="form-grid cols-2">
+        ${selectField({ name: 'goal', label: '目标模式', value: state.profile.goal, options: profileOptions.goals })}
+        <label>强化方向<input name="focusArea" value="${state.profile.focusArea}" /></label>
+        ${selectField({ name: 'split', label: '训练分化', value: state.profile.split, options: profileOptions.splits })}
+        ${numericField({ name: 'daysPerWeek', label: '每周训练天数', value: state.profile.daysPerWeek, min: 1, max: 7 })}
+        ${selectField({ name: 'nutritionPhase', label: '饮食阶段', value: state.profile.nutritionPhase, options: profileOptions.nutritionPhases })}
+        ${selectField({ name: 'proteinCompliance', label: '蛋白质执行度', value: state.profile.proteinCompliance, options: profileOptions.proteinComplianceLevels })}
+        ${numericField({ name: 'sleepHours', label: '平均睡眠', value: state.profile.sleepHours, min: 0, max: 24, step: '0.1' })}
+        ${selectField({ name: 'stressLevel', label: '压力等级', value: state.profile.stressLevel, options: profileOptions.stressLevels })}
+        ${selectField({ name: 'currentDayType', label: '当前训练日', value: state.profile.currentDayType, options: profileOptions.dayTypes })}
+        <label>疼痛/旧伤<input name="painStatus" value="${state.profile.painStatus ?? '无'}" /></label>
+      </form>
+      <div class="actions inline">
+        <button type="button" class="primary" data-save="settingsForm">保存设置</button>
+        <button type="button" class="primary ghost" data-page-jump="today">查看新建议</button>
+      </div>
+    </section>
+  `;
+}
+
+function buildTodayCustomization(plan) {
+  const pref = state.todayPreference;
+  const isLegDay = plan.dayType === '腿训练日';
+
+  if (pref === 'glute') {
+    return {
+      title: '臀腿偏翘臀',
+      summary: isLegDay ? '今天优先把刺激更多分配到臀部和腿后侧。' : '当前不是腿训练日，建议下次腿日启用。',
+      items: isLegDay
+        ? [
+            '深蹲维持推荐重量，先保住主项质量',
+            '把罗马尼亚硬拉提前，优先刺激臀腿后侧',
+            '腿举可替换为臀推 4×8-10 或保加利亚分腿蹲 3×10-12',
+            '最后补 1 个臀部孤立动作，如臀外展或绳索后踢腿 3×12-15',
+          ]
+        : ['建议把“当前训练日”切到腿训练日后，再使用这套微调。'],
+    };
+  }
+
+  if (pref === 'quad') {
+    return {
+      title: '腿部偏股四头',
+      summary: isLegDay ? '今天更偏向股四头训练。' : '当前不是腿训练日，建议下次腿日启用。',
+      items: isLegDay
+        ? ['深蹲主项保留', '腿举脚位更低更窄', '收尾加腿屈伸 3×12-15']
+        : ['当前训练日不建议强行套用股四头偏置。'],
+    };
+  }
+
+  if (pref === 'low_fatigue') {
+    return {
+      title: '今天状态一般',
+      summary: '本次更适合保守训练，优先练到位，而不是练到极限。',
+      items: ['主项只求稳定完成', '辅助动作每个减少 1 组', '全程保留 2 次左右余力'],
+    };
+  }
+
+  if (pref === 'quick') {
+    return {
+      title: '45 分钟快练',
+      summary: '今天优先保留最有价值的动作，用更短时间完成有效训练。',
+      items: ['保留 1 个主项 + 2 个关键辅助动作', '孤立动作缩减到 1 个或直接省略', '主项休息充足，辅助更紧凑'],
+    };
+  }
+
+  return {
+    title: '标准推进',
+    summary: '按系统默认建议训练，优先保证主项质量和渐进进步。',
+    items: ['主项按推荐重量执行', '辅助动作优先补次数', '最后一组不盲目冲极限'],
+  };
+}
+
+function renderToast(message) {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.classList.add('show'), 20);
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 250);
+  }, 2200);
+}
+
+function renderChat() {
+  let chatRoot = document.getElementById('chat-root');
+  if (!chatRoot) {
+    chatRoot = document.createElement('div');
+    chatRoot.id = 'chat-root';
+    document.body.appendChild(chatRoot);
+  }
+
+  if (!state.chatOpen) {
+    chatRoot.innerHTML = `
+      <button type="button" class="chat-fab" data-chat-toggle aria-label="打开 AI 健身教练">
+        <span>💬</span>
+      </button>
+    `;
+    return;
+  }
+
+  chatRoot.innerHTML = `
+    <section class="chat-panel">
+      <header class="chat-header">
+        <div>
+          <div class="eyebrow">AI 健身教练</div>
+          <h3>随时问我训练问题</h3>
+        </div>
+        <button type="button" class="chat-close" data-chat-toggle aria-label="收起聊天面板">−</button>
+      </header>
+      <div class="chat-messages">
+        ${state.chatMessages.map((message) => `
+          <div class="chat-row ${message.role === 'user' ? 'chat-row-user' : 'chat-row-assistant'}">
+            <div class="chat-bubble ${message.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant'}">${message.content}</div>
+          </div>
+        `).join('')}
+        ${state.chatLoading ? `
+          <div class="chat-row chat-row-assistant">
+            <div class="chat-bubble chat-bubble-assistant">教练正在思考...</div>
+          </div>
+        ` : ''}
+      </div>
+      <div class="chat-input-wrap">
+        ${isStandaloneMode ? '<div class="chat-tip">对话功能需要启动后端服务，请参考 README 使用 npm run dev 启动。</div>' : ''}
+        <textarea id="chatInput" class="chat-input" placeholder="比如：今天卧推该不该加重？" ${isStandaloneMode ? 'disabled' : ''}>${state.chatInput}</textarea>
+        <button type="button" class="primary chat-send" data-chat-send ${isStandaloneMode ? 'disabled' : ''}>发送</button>
+      </div>
+    </section>
+  `;
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById('chatInput');
+  const content = (input?.value ?? state.chatInput ?? '').trim();
+  if (!content || state.chatLoading || isStandaloneMode) return;
+
+  state.chatMessages.push({ role: 'user', content });
+  state.chatInput = '';
+  state.chatLoading = true;
+  saveProfile();
+  render();
+
+  try {
+    const response = await fetch('http://localhost:3001/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: state.chatMessages.map(({ role, content: text }) => ({ role, content: text })),
+        profile: state.profile,
+        workouts: state.workouts,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`chat_api_${response.status}`);
+    }
+
+    const data = await response.json();
+    state.chatMessages.push({ role: 'assistant', content: data.reply || '我刚刚没组织好语言，你可以再问我一次。' });
+  } catch {
+    state.chatMessages.push({
+      role: 'assistant',
+      content: '当前暂时无法连接教练服务。请先确认后端是否已通过 npm run dev 启动，然后再试一次。',
+    });
+  } finally {
+    state.chatLoading = false;
+    saveProfile();
+    render();
+  }
+}
+
+function renderPage(derived) {
+  if (state.currentPage === 'dashboard') return renderDashboard(derived);
+  if (state.currentPage === 'profile') return renderProfile();
+  if (state.currentPage === 'connect') return renderConnect();
+  if (state.currentPage === 'today') return renderToday(derived);
+  if (state.currentPage === 'analysis') return renderAnalysis(derived);
+  if (state.currentPage === 'sync') return renderSync();
+  if (state.currentPage === 'settings') return renderSettings();
+  return '<section class="card"><p>页面建设中</p></section>';
+}
+
+function collectForm(form) {
+  const formData = new FormData(form);
+  return Object.fromEntries(formData.entries());
+}
+
+function normalizeProfilePatch(patch) {
+  const next = { ...patch };
+  ['age', 'height', 'weight', 'bodyFat', 'experienceMonths', 'daysPerWeek', 'sleepHours'].forEach((key) => {
+    if (next[key] != null && next[key] !== '') next[key] = Number(next[key]);
+  });
+  return next;
+}
+
+root.addEventListener('click', (event) => {
+  const button = event.target.closest('button');
+  if (!button) return;
+
+  if (button.dataset.jump || button.dataset.pageJump) {
+    state.currentPage = button.dataset.jump || button.dataset.pageJump;
+    render();
+    return;
+  }
+
+  if (button.dataset.save) {
+    const form = document.getElementById(button.dataset.save);
+    if (!form) return;
+    const patch = normalizeProfilePatch(collectForm(form));
+    state.profile = { ...state.profile, ...patch };
+    saveProfile();
+    refreshHeader();
+    renderToast('已保存，并根据新状态刷新建议。');
+    render();
+    return;
+  }
+
+  if ('resetProfile' in button.dataset) {
+    state.profile = defaultProfile();
+    saveProfile();
+    refreshHeader();
+    renderToast('已恢复为示例档案。');
+    render();
+    return;
+  }
+
+  if ('updateKey' in button.dataset) {
+    const value = document.getElementById('apiKeyInput')?.value?.trim();
+    if (value) {
+      state.profile.apiKeyMasked = value;
+      state.profile.xunjiConnected = true;
+      saveProfile();
+      renderToast('已保存训记 API Key。');
+      render();
+    }
+    return;
+  }
+
+  if ('mockSync' in button.dataset) {
+    state.profile.lastSyncText = '刚刚';
+    addSyncLog('同步成功，已刷新当前训练建议');
+    saveProfile();
+    refreshHeader();
+    renderToast('已模拟完成同步。');
+    render();
+    return;
+  }
+
+  if (button.dataset.pref) {
+    state.todayPreference = button.dataset.pref;
+    renderToast('已按你的今日目标微调建议。');
+    render();
+  }
+});
+
+document.body.addEventListener('click', (event) => {
+  const button = event.target.closest('button');
+  if (!button) return;
+
+  if ('chatToggle' in button.dataset) {
+    state.chatOpen = !state.chatOpen;
+    render();
+    return;
+  }
+
+  if ('chatSend' in button.dataset) {
+    sendChatMessage();
+  }
+});
+
+document.body.addEventListener('input', (event) => {
+  if (event.target?.id === 'chatInput') {
+    state.chatInput = event.target.value;
+  }
+});
+
+document.body.addEventListener('keydown', (event) => {
+  if (event.target?.id === 'chatInput' && event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    sendChatMessage();
+  }
+});
+
+function render() {
+  const derived = computeState();
+  renderNav();
+  topbarTitle.textContent = navItems.find((item) => item.key === state.currentPage)?.label ?? '健身进阶推荐器';
+  root.innerHTML = renderPage(derived);
+  renderChat();
+}
+
+render();
+    </script>
+  </body>
+</html>
