@@ -511,4 +511,112 @@ import { modifyPlan } from './plan-modifier.js?v=3';
 
 ---
 
+## 十二、部署与迁移（Vercel 架构）
+
+> 本项目已完成 Vercel 化改造，支持本地开发和 Vercel 部署两种模式。
+
+### 12.1 架构变化
+
+迁移后项目结构：
+
+```
+app/
+├── api/                    ← Vercel Serverless Functions
+│   ├── chat.js             ← /api/chat（LLM 对话）
+│   ├── feedback.js         ← /api/feedback（反馈收集）
+│   └── _utils/
+│       └── llm-client.js   ← 共享 LLM 客户端
+├── src/                    ← 前端源码（本地开发和 Vercel 共用）
+├── index.html              ← 单页入口
+├── server/                 ← 本地开发用的 Express 后端（Vercel 不部署）
+├── vercel.json             ← Vercel 配置
+└── .vercelignore           ← 排除 server/、node_modules/ 等
+```
+
+**关键变化**：
+- 后端从 Express 服务器拆成两个 Vercel Serverless Function：`api/chat.js` 和 `api/feedback.js`
+- 前端 `app.js` 中的 API 地址改为自适应：`localhost` 环境走 `http://localhost:3001`，其他环境走相对路径 `/api/chat`
+- `feedback.js` 不再写入文件（Vercel 无状态），改为 `console.log` 输出到 Function Logs
+- `server/` 目录保留给本地开发使用，Vercel 部署时通过 `.vercelignore` 排除
+
+### 12.2 本地开发
+
+```bash
+# Terminal 1: 启动本地 Express 后端
+cd server && node index.js
+# → http://localhost:3001
+
+# Terminal 2: 启动静态服务器
+cd /Users/lijiaxin/Documents/Codex/2026-07-06/app
+python3 -m http.server 8080
+# → http://localhost:8080
+```
+
+本地开发时，前端 `API_BASE` 自动识别为 `http://localhost:3001`，走 Express 后端。
+
+### 12.3 Vercel 部署
+
+**方式 A：Vercel CLI**
+
+```bash
+npm i -g vercel
+vercel login
+vercel --prod
+```
+
+**方式 B：GitHub 集成（推荐）**
+
+1. 访问 [vercel.com](https://vercel.com)，用 GitHub 账号登录
+2. 点击 **Add New Project**
+3. 选择 `fitness-recommender` 仓库
+4. 框架预设选 **Other**
+5. 点击 **Deploy**
+
+以后每次 `git push` 到 main 分支，Vercel 自动重新部署。
+
+### 12.4 环境变量配置
+
+Vercel Dashboard → **Settings** → **Environment Variables**：
+
+| 变量名 | 值 | 说明 |
+|--------|-----|------|
+| `OPENAI_API_KEY` | `sk-xxx...` | 外网 LLM 的 API Key |
+| `OPENAI_BASE_URL` | `https://api.deepseek.com/v1` | LLM 服务的 base URL |
+| `OPENAI_MODEL` | `deepseek-chat` | 模型名称 |
+
+**关于 FRIDAY API 的内网限制**：
+
+FRIDAY（`aigc.sankuai.com`）是美团内网服务，Vercel 外网无法访问。部署后有两种选择：
+
+**选择 1：不配置 API Key → 自动降级到 Mock 模式（推荐用于 Demo）**
+- 不设置任何环境变量
+- LLM 客户端检测到没有 key，自动使用上下文感知的 mock 回复
+- 适合面试 Demo 展示，不需要花钱调用外网 LLM
+
+**选择 2：配置外网 LLM → 真 AI 回复**
+- 推荐 **DeepSeek**（国内可用，价格低，API 兼容 OpenAI）
+- 注册 [platform.deepseek.com](https://platform.deepseek.com)，创建 API Key
+- 把 Key 填入 Vercel 环境变量
+- 前端体验完全一致，只是后端换了个 LLM
+
+### 12.5 前端 API 地址自适应
+
+```js
+// src/app.js
+const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001' : '';
+
+// 本地：fetch('http://localhost:3001/api/chat')
+// Vercel：fetch('/api/chat')
+```
+
+### 12.6 部署验证清单
+
+1. 打开 Vercel 分配的域名，确认首页正常渲染
+2. 点击右下角 💬 打开聊天窗口，发一条消息
+3. 确认 AI 能回复（Mock 模式也能回复）
+4. 尝试说"今天我想练手臂"，确认计划修改功能正常
+5. 检查 Vercel Function Logs（Dashboard → Functions → Logs）查看反馈记录
+
+---
+
 *文档最后更新：2026-08-26*
