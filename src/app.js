@@ -16,6 +16,8 @@ const state = {
   trainingPlans: loadTrainingPlans(initialProfile),
   todayPreference: 'standard',
   analysisMuscleFilter: 'all',
+  weekOffset: 0,
+  selectedDayDate: null,
   syncLog: loadSyncLog(),
   chatOpen: false,
   chatLoading: false,
@@ -48,6 +50,18 @@ function addDays(dateKey, amount) {
   const date = new Date(`${dateKey}T12:00:00`);
   date.setDate(date.getDate() + amount);
   return localDateKey(date);
+}
+
+function startOfWeek(dateKey = localDateKey()) {
+  const date = new Date(`${dateKey}T12:00:00`);
+  const day = date.getDay();
+  date.setDate(date.getDate() - (day === 0 ? 6 : day - 1));
+  return localDateKey(date);
+}
+
+function formatMonthDay(dateKey) {
+  const date = new Date(`${dateKey}T12:00:00`);
+  return `${date.getMonth() + 1}月${date.getDate()}日`;
 }
 
 function hasCompletedSets(workout) {
@@ -289,6 +303,7 @@ function renderNav() {
   nav.querySelectorAll('[data-page]').forEach((button) => {
     button.addEventListener('click', () => {
       state.currentPage = button.dataset.page;
+      state.selectedDayDate = null;
       render();
     });
   });
@@ -376,16 +391,91 @@ function mountMuscleMaps() {
 
 function renderWeekStrip() {
   const today = localDateKey();
+  const weekStart = addDays(startOfWeek(today), state.weekOffset * 7);
+  const weekDates = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
+  const weekEnd = weekDates[6];
   return `
-    <section class="week-strip" aria-label="本周训练计划">
-      ${state.trainingPlans.slice().sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 7).map((plan) => {
-        const date = new Date(`${plan.date}T12:00:00`);
+    <div class="week-strip-header">
+      <div>
+        <div class="eyebrow">训练日历 · 最近 30 天可回看</div>
+        <strong>${formatMonthDay(weekStart)} — ${formatMonthDay(weekEnd)}</strong>
+      </div>
+      <div class="week-nav-actions">
+        <button type="button" class="calendar-button" data-week-shift="-1" ${state.weekOffset <= -4 ? 'disabled' : ''}>← 上一周</button>
+        ${state.weekOffset !== 0 ? '<button type="button" class="calendar-button is-today-shortcut" data-week-reset>回到本周</button>' : ''}
+        <button type="button" class="calendar-button" data-week-shift="1" ${state.weekOffset >= 2 ? 'disabled' : ''}>下一周 →</button>
+      </div>
+    </div>
+    <section class="week-strip" aria-label="一周训练计划">
+      ${weekDates.map((dateKey) => {
+        const plan = state.trainingPlans.find((item) => item.date === dateKey);
+        const log = state.workoutLogs.slice().sort((a, b) => new Date(b.completedAt ?? b.date) - new Date(a.completedAt ?? a.date)).find((item) => item.date === dateKey);
+        const date = new Date(`${dateKey}T12:00:00`);
         const dayLabel = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][date.getDay()];
-        return `<button type="button" class="week-day ${plan.date === today ? 'is-today' : ''} ${plan.status === 'completed' ? 'is-completed' : ''}" data-plan-date="${plan.date}">
-          <span>${plan.date === today ? '今天' : dayLabel}</span><strong>${plan.dayType.replace('训练日', '')}</strong><small>${plan.status === 'completed' ? '已完成' : plan.status === 'rest' ? '主动恢复' : '计划中'}</small>
+        const dayType = log?.dayType ?? plan?.dayType ?? '无安排';
+        const isPast = dateKey < today;
+        const status = log
+          ? '已完成'
+          : plan?.status === 'rest' ? '主动恢复'
+            : isPast ? '未记录'
+              : plan ? '计划中' : '无安排';
+        return `<button type="button" class="week-day ${dateKey === today ? 'is-today' : ''} ${log ? 'is-completed' : ''} ${isPast ? 'is-past' : 'is-future'}" data-plan-date="${dateKey}">
+          <span>${dateKey === today ? '今天' : dayLabel} · ${date.getDate()}日</span><strong>${dayType.replace('训练日', '')}</strong><small>${status}</small>
         </button>`;
       }).join('')}
     </section>
+  `;
+}
+
+function renderDayDrawer() {
+  if (!state.selectedDayDate) return '';
+  const dateKey = state.selectedDayDate;
+  const today = localDateKey();
+  const date = new Date(`${dateKey}T12:00:00`);
+  const dayLabel = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][date.getDay()];
+  const plan = state.trainingPlans.find((item) => item.date === dateKey);
+  const completedLogs = state.workoutLogs.filter((item) => item.date === dateKey);
+  const log = completedLogs.slice().sort((a, b) => new Date(b.completedAt ?? b.date) - new Date(a.completedAt ?? a.date))[0];
+  const exercises = log?.exercises ?? plan?.exercises ?? [];
+  const status = log ? '已完成' : plan?.status === 'rest' ? '主动恢复' : dateKey < today ? '未记录' : '计划中';
+  const totalVolume = (log?.exercises ?? []).reduce((total, exercise) => total + (exercise.sets ?? []).reduce((sum, setItem) => sum + Number(setItem[0] ?? 0) * Number(setItem[1] ?? 0), 0), 0);
+
+  return `
+    <div class="day-drawer-backdrop" data-close-day></div>
+    <aside class="day-drawer" role="dialog" aria-modal="true" aria-label="${dateKey} 训练详情">
+      <header class="day-drawer-header">
+        <div>
+          <div class="eyebrow">训练详情 · ${dayLabel}</div>
+          <h3>${formatMonthDay(dateKey)} · ${log?.dayType ?? plan?.dayType ?? '无训练安排'}</h3>
+        </div>
+        <button type="button" class="drawer-close" data-close-day aria-label="关闭训练详情">×</button>
+      </header>
+      <div class="drawer-summary">
+        <span class="status-pill ${log ? 'success' : status === '未记录' ? 'warning' : 'neutral'}">${status}</span>
+        ${log ? `<span>实际动作 ${exercises.length} 个</span><span>总训练容量 ${Math.round(totalVolume).toLocaleString()} kg</span>` : '<span>不会改变今天的训练建议</span>'}
+      </div>
+      <div class="day-drawer-content">
+        ${log ? `
+          <div class="drawer-section-title">实际完成记录</div>
+          ${exercises.map((exercise, index) => {
+            const sets = exercise.sets ?? [];
+            return `<article class="history-exercise">
+              <div class="history-exercise-head"><div><span>动作 ${index + 1} · ${exercise.muscle ?? '未分类'}</span><strong>${exercise.name}</strong></div>${exercise.rpe != null ? `<b>RPE ${exercise.rpe}</b>` : ''}</div>
+              <div class="history-set-list">${sets.map((setItem, setIndex) => `<span>${setIndex + 1}组 · ${setItem[0]}kg × ${setItem[1]}</span>`).join('')}</div>
+            </article>`;
+          }).join('')}
+        ` : plan ? `
+          <div class="drawer-section-title">${dateKey < today ? '当天计划（没有完成记录）' : '训练计划'}</div>
+          ${exercises.map((exercise, index) => `<article class="history-exercise compact-history">
+            <div class="history-exercise-head"><div><span>动作 ${index + 1} · ${exercise.muscle ?? '未分类'}</span><strong>${exercise.name}</strong></div><b>${exercise.target ?? '待安排'}</b></div>
+          </article>`).join('') || '<div class="drawer-empty">休息日无需记录训练动作。</div>'}
+        ` : '<div class="drawer-empty"><strong>这一天没有训练计划或完成记录</strong><p>历史查看不会修改今天的计划，你可以直接关闭返回首页。</p></div>'}
+      </div>
+      <footer class="day-drawer-footer">
+        <span>仅查看历史，不影响今日建议</span>
+        <button type="button" class="primary ghost" data-close-day>关闭</button>
+      </footer>
+    </aside>
   `;
 }
 
@@ -1318,12 +1408,41 @@ root.addEventListener('click', (event) => {
 
   if (button.dataset.planDate) {
     const plan = state.trainingPlans.find((item) => item.date === button.dataset.planDate);
-    if (plan?.date === localDateKey()) {
-      state.currentPage = plan.status === 'completed' ? 'analysis' : 'today';
+    if (button.dataset.planDate === localDateKey()) {
+      state.currentPage = plan?.status === 'completed' ? 'analysis' : 'today';
       render();
-    } else if (plan) {
-      renderToast(`${plan.date}：${plan.dayType} · ${plan.status === 'completed' ? '已完成' : plan.status === 'rest' ? '主动恢复' : '计划中'}`);
+    } else {
+      state.selectedDayDate = button.dataset.planDate;
+      render();
     }
+    return;
+  }
+
+  if (button.dataset.weekShift) {
+    state.weekOffset = Math.max(-4, Math.min(2, state.weekOffset + Number(button.dataset.weekShift)));
+    state.selectedDayDate = null;
+    render();
+    return;
+  }
+
+  if ('weekReset' in button.dataset) {
+    state.weekOffset = 0;
+    state.selectedDayDate = null;
+    render();
+    return;
+  }
+
+  if ('closeDay' in button.dataset) {
+    state.selectedDayDate = null;
+    render();
+    return;
+  }
+});
+
+root.addEventListener('click', (event) => {
+  if (!event.target.closest('button') && event.target.closest('[data-close-day]')) {
+    state.selectedDayDate = null;
+    render();
   }
 });
 
@@ -1416,7 +1535,7 @@ function render() {
     derived = computeState();
     renderNav();
     topbarTitle.textContent = navItems.find((item) => item.key === state.currentPage)?.label ?? '健身进阶推荐器';
-    root.innerHTML = renderPage(derived);
+    root.innerHTML = `${renderPage(derived)}${renderDayDrawer()}`;
     mountMuscleMaps();
   } catch (err) {
     console.error('[render] error:', err);

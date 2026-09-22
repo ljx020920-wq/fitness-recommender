@@ -681,17 +681,19 @@ select option {
 
 /* 进度提示气泡（动作列表右侧） */
 .hint-bubble {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 12px;
   background: rgba(142, 242, 208, 0.14);
   border: 1px solid rgba(142, 242, 208, 0.4);
   color: #8ef2d0;
   font-size: 12px;
-  white-space: nowrap;
-  max-width: 220px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.45;
+  white-space: normal;
+  max-width: 340px;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .hint-bubble.wide {
@@ -728,6 +730,44 @@ select option {
 }
 
 /* 专业力量风：计划周视图 */
+.week-strip-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.week-strip-header strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 15px;
+}
+
+.week-nav-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.calendar-button {
+  padding: 8px 12px;
+  color: var(--text);
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.calendar-button:hover,
+.calendar-button.is-today-shortcut {
+  color: var(--brand);
+  border-color: rgba(183, 255, 74, .4);
+}
+
+.calendar-button:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+
 .week-strip {
   display: grid;
   grid-template-columns: repeat(7, minmax(105px, 1fr));
@@ -776,6 +816,180 @@ select option {
 .week-day.is-completed strong,
 .week-day.is-completed small {
   color: var(--success);
+}
+
+.week-day.is-past:not(.is-completed):not(.is-today) small {
+  color: var(--warning);
+}
+
+.week-day.is-past:not(.is-completed) {
+  opacity: .82;
+}
+
+.recommendation-row > div:first-child {
+  min-width: 0;
+}
+
+.recommendation-row .hint-bubble {
+  flex: 0 1 340px;
+  justify-content: flex-start;
+}
+
+/* 历史训练详情抽屉 */
+.day-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: rgba(1, 7, 5, .68);
+  backdrop-filter: blur(3px);
+}
+
+.day-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 910;
+  width: min(520px, calc(100vw - 18px));
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  color: var(--text);
+  background: #0a1511;
+  border-left: 1px solid rgba(183, 255, 74, .25);
+  box-shadow: -24px 0 60px rgba(0, 0, 0, .45);
+  animation: drawer-in .2s ease-out;
+}
+
+@keyframes drawer-in {
+  from { transform: translateX(28px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.day-drawer-header,
+.day-drawer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.day-drawer-header h3 {
+  margin: 6px 0 0;
+  font-size: 21px;
+}
+
+.drawer-close {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  color: var(--text);
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  font-size: 24px;
+  line-height: 1;
+}
+
+.drawer-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 14px 22px;
+  color: var(--muted);
+  font-size: 13px;
+  border-bottom: 1px solid var(--line);
+}
+
+.day-drawer-content {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 22px 28px;
+}
+
+.drawer-section-title {
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.history-exercise {
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+}
+
+.history-exercise:first-of-type {
+  border-top: 0;
+  padding-top: 4px;
+}
+
+.history-exercise-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.history-exercise-head div {
+  display: grid;
+  gap: 5px;
+}
+
+.history-exercise-head span,
+.history-exercise-head b {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.history-exercise-head strong {
+  font-size: 17px;
+}
+
+.history-set-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.history-set-list span {
+  padding: 7px 9px;
+  border-radius: 8px;
+  color: #cfe0d7;
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  font-size: 12px;
+}
+
+.compact-history .history-exercise-head b {
+  color: var(--brand);
+}
+
+.drawer-empty {
+  display: grid;
+  gap: 8px;
+  place-content: center;
+  min-height: 240px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.drawer-empty p {
+  margin: 0;
+}
+
+.day-drawer-footer {
+  border-top: 1px solid var(--line);
+  border-bottom: 0;
+}
+
+.day-drawer-footer > span {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .compact-actions {
@@ -1063,6 +1277,31 @@ select option {
     flex-wrap: wrap;
   }
 
+  .week-strip-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .week-nav-actions {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .calendar-button {
+    flex: 0 0 auto;
+  }
+
+  .recommendation-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .recommendation-row .hint-bubble {
+    width: 100%;
+    max-width: none;
+    flex-basis: auto;
+  }
+
   .chat-panel {
     right: 16px;
     bottom: 16px;
@@ -1096,6 +1335,17 @@ select option {
 
   .body-chart {
     height: 400px;
+  }
+
+  .day-drawer-header,
+  .day-drawer-footer {
+    padding: 18px;
+  }
+
+  .drawer-summary,
+  .day-drawer-content {
+    padding-left: 18px;
+    padding-right: 18px;
   }
 }
 
