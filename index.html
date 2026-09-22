@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FORGE AI · 智能力量训练</title>
+    <link rel="stylesheet" href="./src/styles.css?v=10" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">F</div>
+          <div>
+            <h1>FORGE AI</h1>
+            <p>计划与完成记录分离的力量训练助手</p>
+          </div>
+        </div>
+        <nav class="nav" id="nav"></nav>
+        <div class="sidebar-card">
+          <div class="sidebar-label">当前模式</div>
+          <div class="sidebar-value" id="goalModeBadge">增肌优先</div>
+          <p class="muted">LOCAL TRAINING MVP</p>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <div class="eyebrow">FORGE / TRAIN SMARTER</div>
+            <h2 id="topbarTitle">首页</h2>
+          </div>
+          <div class="topbar-actions">
+            <div class="status-pill success" id="syncStatusPill">最近同步：2 小时前</div>
+            <button class="primary ghost" id="syncNowBtn">立即同步</button>
+          </div>
+        </header>
+
+        <section id="page-root"></section>
+      </main>
+    </div>
+
+    <script src="./node_modules/body-muscles/dist/umd/body-muscles.umd.min.js?v=1"></script>
+    <script type="module" src="./src/app.js?v=8"></script>
+  </body>
+</html>
