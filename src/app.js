@@ -22,7 +22,7 @@ const state = {
   profileSetupComplete: initialProfileSetupComplete,
   onboardingStep: 1,
   onboardingOriginalProfile: null,
-  guideStep: loadGuideComplete() ? null : 0,
+  guideStep: loadGuideComplete() ? null : loadGuideStep(),
   analysisMuscleFilter: 'all',
   weekOffset: 0,
   selectedDayDate: null,
@@ -53,6 +53,28 @@ function loadGuideComplete() {
   } catch {
     return false;
   }
+}
+
+function loadGuideStep() {
+  try {
+    const saved = Number(localStorage.getItem('fitness-guide-step-v1'));
+    return Number.isInteger(saved) && saved >= 0 && saved <= 2 ? saved : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function updateGuideStep(step) {
+  state.guideStep = step;
+  try { localStorage.setItem('fitness-guide-step-v1', String(step)); } catch {}
+}
+
+function completeGuide() {
+  state.guideStep = null;
+  try {
+    localStorage.setItem('fitness-guide-complete-v1', 'true');
+    localStorage.removeItem('fitness-guide-step-v1');
+  } catch {}
 }
 
 function loadTodaySession() {
@@ -365,7 +387,10 @@ function renderNav() {
 
   nav.querySelectorAll('[data-page]').forEach((button) => {
     button.addEventListener('click', () => {
-      state.currentPage = button.dataset.page;
+      const nextPage = button.dataset.page;
+      if (state.guideStep != null && nextPage === 'today' && state.guideStep < 1) updateGuideStep(1);
+      if (state.guideStep != null && nextPage === 'record' && state.guideStep < 2) updateGuideStep(2);
+      state.currentPage = nextPage;
       state.selectedDayDate = null;
       render();
     });
@@ -542,25 +567,41 @@ function renderDayDrawer() {
   `;
 }
 
-function renderFirstUseGuide() {
+function renderContextualGuide(page) {
   if (state.guideStep == null) return '';
-  const steps = [
-    { title: '先确认今天练什么', text: '系统已根据训练日和恢复状态生成计划，你可以按时间和状态微调。', page: 'today', action: '查看今日计划' },
-    { title: '训练时记录真实完成情况', text: '重量、组数、次数和 RPE 只有提交后才会影响下一次建议。', page: 'record', action: '看看如何记录' },
-    { title: '完成后查看训练复盘', text: '分析页会汇总动作趋势、训练量和下一次推进建议。', page: 'analysis', action: '查看分析页' },
+  const guides = [
+    {
+      page: 'dashboard',
+      title: '先确认今天的训练方案',
+      text: '不要先浏览所有功能。第一步只需要确认今天练什么，以及是否要按时间和状态微调。',
+      action: '<button type="button" class="primary" data-guide-page="today">去确认今日计划</button>',
+    },
+    {
+      page: 'today',
+      title: '根据真实状态选一个模式',
+      text: '点击下方“标准推进、状态一般、45分钟快练”等选项，动作清单会立即变化；确认后再开始。',
+      action: '<span class="guide-pointer">↓ 就在下方选择</span>',
+    },
+    {
+      page: 'record',
+      title: '训练后填写实际完成情况',
+      text: '把真实重量、组数、次数和 RPE 填完并提交。保存成功后会直接进入训练复盘。',
+      action: '<span class="guide-pointer">↓ 完成后点击“完成并保存训练”</span>',
+    },
   ];
-  const current = steps[state.guideStep] ?? steps[0];
+  const current = guides[state.guideStep];
+  if (!current || current.page !== page) return '';
   return `
-    <section class="guide-card">
-      <div>
-        <div class="eyebrow">首次使用引导 · ${state.guideStep + 1}/${steps.length}</div>
+    <section class="guide-card contextual-guide">
+      <span class="guide-step-number">${state.guideStep + 1}</span>
+      <div class="guide-copy">
+        <div class="eyebrow">跟着做 · 第 ${state.guideStep + 1}/3 步</div>
         <h3>${current.title}</h3>
         <p>${current.text}</p>
       </div>
       <div class="guide-actions">
-        <button type="button" class="primary ghost" data-guide-skip>跳过引导</button>
-        <button type="button" class="primary ghost" data-guide-page="${current.page}">${current.action}</button>
-        <button type="button" class="primary" data-guide-next>${state.guideStep === steps.length - 1 ? '完成引导' : '下一步'}</button>
+        ${current.action}
+        <button type="button" class="guide-skip" data-guide-skip>跳过引导</button>
       </div>
     </section>
   `;
@@ -578,7 +619,7 @@ function renderDashboard(derived) {
       : { page: 'today', label: '确认今日计划' };
   return `
     ${renderWeekStrip()}
-    ${renderFirstUseGuide()}
+    ${renderContextualGuide('dashboard')}
     <section class="grid cols-2 hero-grid">
       <article class="card hero-card gradient">
         <div class="card-header">
@@ -793,6 +834,8 @@ function renderToday(derived) {
       </div>
     </section>
 
+    ${renderContextualGuide('today')}
+
     <section class="card section-gap">
       <div class="card-header">
         <div>
@@ -906,6 +949,8 @@ function renderRecord(derived) {
       </div>
       <span class="status-pill ${existingLog ? 'success' : 'neutral'}">${existingLog ? '今天已有完成记录' : '尚未完成'}</span>
     </section>
+
+    ${renderContextualGuide('record')}
 
     ${state.todayPreference === 'cardio' ? `
       <section class="card cardio-addon-card section-gap">
@@ -1251,30 +1296,42 @@ function renderChat() {
     return;
   }
 
+  const latestAssistant = [...state.chatMessages].reverse().find((message) => message.role === 'assistant');
+  const modeMeta = {
+    live: { label: '大模型在线', className: 'success' },
+    mock: { label: '本地规则回复', className: 'neutral' },
+    'mock-fallback': { label: '大模型失败 · 本地兜底', className: 'warning' },
+    fallback: { label: '本地计划兜底', className: 'warning' },
+    error: { label: '服务暂时不可用', className: 'warning' },
+  }[latestAssistant?.mode];
+
   chatRoot.innerHTML = `
     <section class="chat-panel">
       <header class="chat-header">
         <div>
           <div class="eyebrow">AI 健身教练</div>
           <h3>随时问我训练问题</h3>
+          ${modeMeta ? `<span class="chat-mode-badge ${modeMeta.className}">${modeMeta.label}</span>` : ''}
         </div>
         <button type="button" class="chat-close" data-chat-toggle aria-label="收起聊天面板">−</button>
       </header>
       <div class="chat-messages">
         ${state.chatMessages.map((message, index) => `
           <div class="chat-row ${message.role === 'user' ? 'chat-row-user' : 'chat-row-assistant'}">
-            <div class="chat-bubble ${message.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant'}">${message.content}</div>
-            ${message.role === 'assistant' ? `
-              <div class="chat-feedback">
-                ${message.feedback ? `
-                  <span class="chat-feedback-done">${message.feedback === 'up' ? '👍 已点赞' : '已反馈，感谢'}</span>
-                ` : `
-                  <button type="button" class="chat-thumb" data-chat-feedback="up" data-chat-index="${index}" title="回答有帮助">👍</button>
-                  <button type="button" class="chat-thumb" data-chat-feedback="down" data-chat-index="${index}" title="回答没帮助">👎</button>
-                `}
-                <button type="button" class="chat-report" data-chat-report="${index}" title="问题没有解决，上报给开发团队">上报问题</button>
-              </div>
-            ` : ''}
+            <div class="chat-message-block">
+              <div class="chat-bubble ${message.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant'}">${message.content}</div>
+              ${message.role === 'assistant' ? `
+                <div class="chat-feedback">
+                  ${message.feedback ? `
+                    <span class="chat-feedback-done">${message.feedback === 'up' ? '👍 已点赞' : '已反馈，感谢'}</span>
+                  ` : `
+                    <button type="button" class="chat-thumb" data-chat-feedback="up" data-chat-index="${index}" title="回答有帮助">👍</button>
+                    <button type="button" class="chat-thumb" data-chat-feedback="down" data-chat-index="${index}" title="回答没帮助">👎</button>
+                  `}
+                  <button type="button" class="chat-report" data-chat-report="${index}" title="问题没有解决，提交反馈">反馈问题</button>
+                </div>
+              ` : ''}
+            </div>
           </div>
         `).join('')}
         ${state.chatLoading ? `
@@ -1290,6 +1347,10 @@ function renderChat() {
       </div>
     </section>
   `;
+  requestAnimationFrame(() => {
+    const messages = chatRoot.querySelector('.chat-messages');
+    if (messages) messages.scrollTop = messages.scrollHeight;
+  });
 }
 
 async function sendChatMessage() {
@@ -1516,6 +1577,7 @@ function saveCompletedWorkout() {
     ? { ...plan, status: 'completed', completedLogId: log.id }
     : plan);
   addSyncLog(`已保存 ${log.dayType}，共 ${exercises.length} 个动作`);
+  if (state.guideStep != null) completeGuide();
   saveProfile();
   state.currentPage = 'analysis';
   renderToast('训练已保存，分析结果已更新。');
@@ -1537,7 +1599,10 @@ root.addEventListener('click', (event) => {
       state.todaySessionDate = localDateKey();
       state.guideStep = 0;
       state.onboardingOriginalProfile = null;
-      try { localStorage.removeItem('fitness-guide-complete-v1'); } catch {}
+      try {
+        localStorage.removeItem('fitness-guide-complete-v1');
+        localStorage.setItem('fitness-guide-step-v1', '0');
+      } catch {}
       saveProfile();
       refreshHeader();
       state.currentPage = 'dashboard';
@@ -1573,25 +1638,14 @@ root.addEventListener('click', (event) => {
   }
 
   if ('guideSkip' in button.dataset) {
-    state.guideStep = null;
-    try { localStorage.setItem('fitness-guide-complete-v1', 'true'); } catch {}
-    render();
-    return;
-  }
-
-  if ('guideNext' in button.dataset) {
-    if (state.guideStep >= 2) {
-      state.guideStep = null;
-      try { localStorage.setItem('fitness-guide-complete-v1', 'true'); } catch {}
-      renderToast('引导已完成，随时从首页开始训练。');
-    } else {
-      state.guideStep += 1;
-    }
+    completeGuide();
     render();
     return;
   }
 
   if (button.dataset.guidePage) {
+    if (button.dataset.guidePage === 'today') updateGuideStep(1);
+    if (button.dataset.guidePage === 'record') updateGuideStep(2);
     state.currentPage = button.dataset.guidePage;
     render();
     return;
@@ -1601,13 +1655,17 @@ root.addEventListener('click', (event) => {
     state.todaySessionConfirmed = true;
     state.todaySessionDate = localDateKey();
     saveProfile();
+    if (state.guideStep != null) updateGuideStep(2);
     state.currentPage = 'record';
     render();
     return;
   }
 
   if (button.dataset.jump || button.dataset.pageJump) {
-    state.currentPage = button.dataset.jump || button.dataset.pageJump;
+    const nextPage = button.dataset.jump || button.dataset.pageJump;
+    if (state.guideStep != null && nextPage === 'today' && state.guideStep < 1) updateGuideStep(1);
+    if (state.guideStep != null && nextPage === 'record' && state.guideStep < 2) updateGuideStep(2);
+    state.currentPage = nextPage;
     render();
     return;
   }
