@@ -5,3 +5,4 @@ server/feedback-log.jsonl
 .vercel
 .env
 .env.local
+/forge-ai-redcowork.zip

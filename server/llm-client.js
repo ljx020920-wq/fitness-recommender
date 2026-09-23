@@ -1,9 +1,8 @@
 const hasRuntimeFetch = typeof fetch === 'function';
 
-// ── FRIDAY One-API 默认配置（美团内部 LLM 平台） ──
-// 正确路径必须包含 /openai/native，文档：https://km.sankuai.com/collabpage/1580139661
-const DEFAULT_BASE_URL = 'https://aigc.sankuai.com/v1/openai/native';
-const DEFAULT_MODEL = 'LongCat-Flash-Chat';
+// 线上模型必须通过服务端环境变量显式配置，避免把平台地址或密钥写进作品代码。
+const DEFAULT_BASE_URL = '';
+const DEFAULT_MODEL = 'gpt-4o-mini';
 
 // ── 上下文感知 mock 逻辑 ──
 // 当没有 API key 或请求失败时，根据用户消息内容生成**不同的**回复
@@ -141,8 +140,8 @@ async function callOpenAICompatible({ systemPrompt, messages, tools }) {
   console.log('[LLM] baseUrl:', baseUrl, 'model:', model);
 
   // 没有 API key 时，使用上下文感知的 mock 逻辑（而非固定一句话）
-  if (!apiKey || !hasRuntimeFetch) {
-    console.log('[LLM] No API key or fetch unavailable, using mock mode');
+  if (!apiKey || !baseUrl || !hasRuntimeFetch) {
+    console.log('[LLM] API configuration unavailable, using mock mode');
     return {
       text: generateContextualMockReply({ systemPrompt, messages }),
       mode: 'mock',

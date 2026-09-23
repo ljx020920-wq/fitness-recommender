@@ -1,11 +1,8 @@
 const hasRuntimeFetch = typeof fetch === 'function';
 
-// ── LLM API 默认配置 ──
-// 优先级：环境变量 > 默认值
-// 美团内网 FRIDAY： https://aigc.sankuai.com/v1/openai/native
-// 外网替代（如 DeepSeek）： https://api.deepseek.com/v1
-const DEFAULT_BASE_URL = 'https://aigc.sankuai.com/v1/openai/native';
-const DEFAULT_MODEL = 'LongCat-Flash-Chat';
+// 线上模型必须通过服务端环境变量显式配置，避免把平台地址或密钥写进作品代码。
+const DEFAULT_BASE_URL = '';
+const DEFAULT_MODEL = 'gpt-4o-mini';
 
 // ── 上下文感知 mock 逻辑 ──
 // 当没有 API key 或请求失败时，根据用户消息内容生成**不同的**回复
@@ -125,7 +122,7 @@ async function callOpenAICompatible({ systemPrompt, messages, tools }) {
 
   console.log('[LLM] apiKey present:', !!apiKey, 'tools:', !!tools);
 
-  if (!apiKey || !hasRuntimeFetch) {
+  if (!apiKey || !baseUrl || !hasRuntimeFetch) {
     console.log('[LLM] No API key or fetch unavailable, using mock mode');
     return {
       text: generateContextualMockReply({ systemPrompt, messages }),

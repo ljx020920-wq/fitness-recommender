@@ -23,7 +23,7 @@ npm run dev
 后端会读取以下环境变量：
 
 - `OPENAI_API_KEY`
-- `OPENAI_BASE_URL`
+- `OPENAI_BASE_URL`（使用真实模型时必填）
 - `OPENAI_MODEL`（可选）
 
 如果没有配置 `OPENAI_API_KEY`，后端会自动回退到 mock 响应，这样也能跑通聊天流程。
@@ -34,4 +34,22 @@ npm run dev
 - AI 对话修改今天的训练类型后，首页、今日建议和个人设置会使用同一份今日计划。
 - 训练分析支持按胸、背、肩、手臂、核心、臀、腿筛选，并使用前后视交互肌肉图展示训练部位。
 - 多文件版（通过 http://localhost:3001 访问）支持聊天接口调用。
-- 单文件版 `fitness_recommender_standalone.html` 仅用于展示，聊天面板会提示需要启动后端服务。
+- AI 接口不可用时，聊天会自动切换为浏览器内的规则问答，计划修改仍可使用。
+- 训记 Key 页面是部署演示，不会保存或发送真实 Key；当前仅完成本地接入流程骨架，等待官方接口权限后再接入真实数据。
+- 肌肉图运行文件已放在 `src/vendor/`，线上不依赖公开访问 `node_modules`。
+
+## REDcowork AI 适配点
+
+如 REDcowork 提供模型调用能力，只需在页面加载前注入以下函数，无需修改产品业务逻辑：
+
+```js
+window.__FORGE_AI_CHAT__ = async function (payload) {
+  // 在这里调用 REDcowork 提供的模型能力。
+  // 返回纯文本，或返回 { reply, mode, functionCall }。
+  return { reply: '模型回复', mode: 'live' };
+};
+```
+
+如果平台没有公开的运行时 AI API，不注入该函数即可，产品会优先尝试 `/api/chat`，失败后自动使用规则问答。
+
+详细导入与验收步骤见 `REDCOWORK_UPLOAD.md`。

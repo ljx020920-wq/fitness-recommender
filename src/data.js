@@ -9,7 +9,7 @@ export const profileOptions = {
 };
 
 export const userProfile = {
-  name: 'LJX',
+  name: '示例用户',
   experienceMonths: 18,
   age: 29,
   gender: '男',
@@ -26,8 +26,8 @@ export const userProfile = {
   nutritionPhase: '轻盈余增肌',
   proteinCompliance: '基本达标',
   xunjiConnected: true,
-  apiKeyMasked: 'xj_live_****_9A3F',
-  lastSyncText: '2 小时前',
+  apiKeyMasked: 'xj_demo_****_FORGE',
+  lastSyncText: '模拟：2 小时前',
   currentDayType: '推训练日',
 };
 

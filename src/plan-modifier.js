@@ -150,6 +150,21 @@ export function modifyPlan(plans, instruction, completedWorkouts = []) {
   const nextPlans = JSON.parse(JSON.stringify(plans));
   const backup = JSON.parse(JSON.stringify(plans));
   let result = { success: false, changes: [], warnings: [], newWorkout: null };
+  const validActions = ['change_day_type', 'swap_days', 'add_day', 'remove_day'];
+  const validDayTypes = Object.keys(DEFAULT_EXERCISES);
+
+  if (!validActions.includes(action) || !/^\d{4}-\d{2}-\d{2}$/.test(targetDate || '')) {
+    result.warnings.push('计划调整参数无效，请明确说明要修改的日期和训练类型。');
+    return { result, nextPlans, nextWorkouts: nextPlans, backup };
+  }
+  if (['change_day_type', 'add_day'].includes(action) && !validDayTypes.includes(targetDayType)) {
+    result.warnings.push('暂不支持这个训练日类型，请选择推、拉、腿、胸、背、肩、手臂或休息日。');
+    return { result, nextPlans, nextWorkouts: nextPlans, backup };
+  }
+  if (action === 'swap_days' && !/^\d{4}-\d{2}-\d{2}$/.test(instruction.swapDate || '')) {
+    result.warnings.push('交换计划需要两个有效日期。');
+    return { result, nextPlans, nextWorkouts: nextPlans, backup };
+  }
 
   const existingIndex = nextPlans.findIndex((w) => w.date === targetDate);
 

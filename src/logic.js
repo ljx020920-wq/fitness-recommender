@@ -227,7 +227,7 @@ export function buildWorkoutRecommendations(profile, workouts, dayType, preferen
       if (allTop && recovery.level === 'low' && !(historyAverageRpe != null && historyAverageRpe >= 9)) {
         action = 'add';
         actionLabel = '加重';
-        targetWeight = current.category === '孤立' ? currentWeight : Number((currentWeight * 1.05).toFixed(1));
+        targetWeight = Number((currentWeight * 1.05).toFixed(1));
         explanation = '上次所有工作组都达到区间上限，建议加重后从区间下限重新推进。';
         progressHint = `已全部达到区间上限，本次加重到 ${targetWeight} kg`;
       } else if (allTop && historyAverageRpe != null && historyAverageRpe >= 9) {

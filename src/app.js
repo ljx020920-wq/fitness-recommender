@@ -1,18 +1,20 @@
 import { userProfile, workouts, profileOptions } from './data.js';
 import { buildDashboard, buildWorkoutRecommendations, buildAnalysis } from './logic.js';
-import { createPlanEntry, modifyPlan } from './plan-modifier.js?v=4';
+import { createPlanEntry, modifyPlan } from './plan-modifier.js?v=5';
 
 const isStandaloneMode = Boolean(window.__FITNESS_STANDALONE__) || window.location.protocol === 'file:' || window.location.pathname.includes('fitness_recommender_standalone.html');
 
-// API base URL：本地开发走 localhost:3001，Vercel 部署走相对路径
+// API base URL：本地开发走 localhost:3001，线上默认走同域接口。
+// REDcowork 如提供平台 AI，可注入 window.__FORGE_AI_CHAT__(payload) 作为适配器。
 const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001' : '';
 
 const initialProfile = loadProfile();
 const initialTodaySession = loadTodaySession();
 const initialProfileSetupComplete = loadProfileSetupComplete();
+const initialWelcomeSeen = loadWelcomeSeen();
 
 const state = {
-  currentPage: initialProfileSetupComplete ? 'dashboard' : 'onboarding',
+  currentPage: initialWelcomeSeen ? (initialProfileSetupComplete ? 'dashboard' : 'onboarding') : 'welcome',
   profile: initialProfile,
   workoutLogs: loadWorkoutLogs(),
   trainingPlans: loadTrainingPlans(initialProfile),
@@ -31,10 +33,50 @@ const state = {
   chatLoading: false,
   chatInput: '',
   chatMessages: loadChatMessages(),
+  demoMode: loadDemoMode(),
 };
 
 function defaultProfile() {
   return JSON.parse(JSON.stringify(userProfile));
+}
+
+function loadWelcomeSeen() {
+  try {
+    return sessionStorage.getItem('fitness-welcome-seen-v1') === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function markWelcomeSeen() {
+  try { sessionStorage.setItem('fitness-welcome-seen-v1', 'true'); } catch {}
+}
+
+function loadDemoMode() {
+  try {
+    return localStorage.getItem('fitness-demo-mode-v1') === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function setDemoMode(enabled) {
+  state.demoMode = enabled;
+  try { localStorage.setItem('fitness-demo-mode-v1', String(enabled)); } catch {}
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>'"]/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    "'": '&#39;',
+    '"': '&quot;',
+  })[char]);
+}
+
+function escapeAttribute(value) {
+  return escapeHtml(value);
 }
 
 function loadProfileSetupComplete() {
@@ -115,6 +157,15 @@ function addDays(dateKey, amount) {
   return localDateKey(date);
 }
 
+function createDemoWorkoutLogs() {
+  const offsets = [-2, -6, -4, -3];
+  const source = JSON.parse(JSON.stringify(workouts)).map((workout, index) => ({
+    ...workout,
+    date: addDays(localDateKey(), offsets[index] ?? -(index + 2)),
+  }));
+  return normalizeWorkouts(source, 'completed');
+}
+
 function startOfWeek(dateKey = localDateKey()) {
   const date = new Date(`${dateKey}T12:00:00`);
   const day = date.getDay();
@@ -139,10 +190,12 @@ function loadWorkoutLogs() {
     const saved = localStorage.getItem('fitness-workout-logs-v1');
     if (saved) return normalizeWorkouts(JSON.parse(saved), 'completed');
     const legacy = localStorage.getItem('fitness-workouts-demo');
-    const source = legacy ? JSON.parse(legacy) : JSON.parse(JSON.stringify(workouts));
-    return normalizeWorkouts(source.filter(hasCompletedSets), 'completed');
+    const source = legacy ? JSON.parse(legacy) : null;
+    return source
+      ? normalizeWorkouts(source.filter(hasCompletedSets), 'completed')
+      : createDemoWorkoutLogs();
   } catch {
-    return normalizeWorkouts(JSON.parse(JSON.stringify(workouts)), 'completed');
+    return createDemoWorkoutLogs();
   }
 }
 
@@ -186,9 +239,8 @@ function loadTrainingPlans(profile) {
 
 function defaultSyncLog() {
   return [
-    { time: '2026/08/12 09:20:00', message: '同步成功，新增 1 次训练记录' },
-    { time: '2026/08/11 21:16:00', message: '同步成功，新增 4 条动作记录' },
-    { time: '2026/08/11 09:15:00', message: '同步成功，未发现新数据' },
+    { time: '演示记录', message: '模拟同步成功，新增 1 次训练记录' },
+    { time: '演示记录', message: '模拟同步成功，新增 4 条动作记录' },
   ];
 }
 
@@ -240,13 +292,48 @@ function detectPlanChangeIntent(userText) {
   return null;
 }
 
+function generateLocalRuleReply(userText) {
+  const text = String(userText ?? '').toLowerCase();
+  const todayPlan = state.trainingPlans.find((plan) => plan.date === localDateKey());
+  const recommendation = buildWorkoutRecommendations(
+    state.profile,
+    state.workoutLogs,
+    todayPlan?.dayType ?? state.profile.currentDayType,
+    state.todayPreference,
+    todayPlan,
+  );
+
+  if (/疼|痛|伤|不舒服|膝盖|腰|肩/.test(text)) {
+    return '先停止会诱发疼痛的动作，不要把关节疼痛当作正常训练反应。今天可改用无痛替代动作并降低负荷；如果疼痛持续、加重或影响日常活动，建议尽快由医生或康复专业人士评估。';
+  }
+  if (/加重|重量|该不该加/.test(text)) {
+    const priority = recommendation.exerciseRecommendations.find((item) => item.category === '主项')
+      ?? recommendation.exerciseRecommendations[0];
+    return priority
+      ? `${priority.name}本次建议“${priority.actionLabel}”，参考重量 ${priority.targetWeight}${typeof priority.targetWeight === 'number' ? ' kg' : ''}。原因：${priority.explanation}`
+      : '当前完成记录不足，建议先用可控重量完成一次训练并记录组数、次数和 RPE，再判断是否加重。';
+  }
+  if (/今天|练什么|怎么练|计划/.test(text)) {
+    const items = recommendation.exerciseRecommendations.slice(0, 5)
+      .map((item) => `• ${item.name}：${item.targetSets} 组，${item.targetRepsRange}，${item.actionLabel}`)
+      .join('\n');
+    return `${recommendation.dayType} · ${recommendation.dayStatus}\n${recommendation.daySummary}${items ? `\n\n${items}` : ''}`;
+  }
+  if (/恢复|睡眠|累|疲劳|状态/.test(text)) {
+    return `${recommendation.recovery.label}：${recommendation.recovery.tip} 今天建议以动作质量为先，并保留 1-2 次余力。`;
+  }
+  if (/吃|饮食|蛋白|碳水|营养/.test(text)) {
+    return `${recommendation.nutritionAdvice} 训练前后优先安排易消化碳水，并让每餐都有稳定蛋白质来源。`;
+  }
+  return '当前使用离线规则问答。你可以问我“今天练什么”“卧推该不该加重”“今天状态不好怎么办”，也可以直接说“今天想练胸”来调整计划。';
+}
+
 function defaultChatMessages() {
   return [
     {
       role: 'assistant',
-      content: isStandaloneMode
-        ? '对话功能需要启动后端服务，请参考 README 使用 npm run dev 启动。'
-        : '你好，我是你的 AI 健身教练。你可以直接问我今天怎么练、要不要加重，或者让我解释推荐结果。',
+      content: '你好，我是你的智能训练教练。你可以问我今天怎么练、要不要加重，或者直接让我调整今天的训练部位。线上模型不可用时，我会自动切换为规则问答。',
+      mode: 'rule',
     },
   ];
 }
@@ -323,16 +410,16 @@ function computeState() {
 
 function selectField({ name, label, value, options }) {
   return `
-    <label>${label}
-      <select name="${name}">
-        ${options.map((option) => `<option value="${option}" ${option === value ? 'selected' : ''}>${option}</option>`).join('')}
+    <label>${escapeHtml(label)}
+      <select name="${escapeAttribute(name)}">
+        ${options.map((option) => `<option value="${escapeAttribute(option)}" ${option === value ? 'selected' : ''}>${escapeHtml(option)}</option>`).join('')}
       </select>
     </label>
   `;
 }
 
 function numericField({ name, label, value, min, max, step = '1' }) {
-  return `<label>${label}<input name="${name}" type="number" value="${value}" min="${min}" max="${max}" step="${step}" /></label>`;
+  return `<label>${escapeHtml(label)}<input name="${escapeAttribute(name)}" type="number" value="${escapeAttribute(value)}" min="${min}" max="${max}" step="${step}" /></label>`;
 }
 
 const navItems = [
@@ -352,8 +439,9 @@ const goalModeBadge = document.querySelector('#goalModeBadge');
 const syncNowBtn = document.querySelector('#syncNowBtn');
 
 function refreshHeader() {
-  goalModeBadge.textContent = state.profile.goal;
-  syncStatusPill.textContent = `最近同步：${state.profile.lastSyncText}`;
+  goalModeBadge.textContent = `${state.profile.goal}${state.demoMode ? ' · 示例档案' : ''}`;
+  syncStatusPill.textContent = `演示同步：${state.profile.lastSyncText}`;
+  syncNowBtn.textContent = '模拟同步';
 }
 
 refreshHeader();
@@ -361,8 +449,8 @@ refreshHeader();
 syncNowBtn.addEventListener('click', () => {
   syncStatusPill.textContent = '同步中…';
   setTimeout(() => {
-    state.profile.lastSyncText = '刚刚';
-    addSyncLog('同步成功，已刷新当前训练建议');
+    state.profile.lastSyncText = '模拟：刚刚';
+    addSyncLog('模拟同步成功，已刷新当前训练建议');
     saveProfile();
     refreshHeader();
     renderToast('已完成一次模拟同步，推荐结果已刷新。');
@@ -371,6 +459,10 @@ syncNowBtn.addEventListener('click', () => {
 });
 
 function renderNav() {
+  if (state.currentPage === 'welcome') {
+    nav.innerHTML = '';
+    return;
+  }
   if (!state.profileSetupComplete) {
     nav.innerHTML = '<button class="nav-item active" type="button" disabled>完成首次建档</button>';
     return;
@@ -708,10 +800,58 @@ function renderDashboard(derived) {
         <ul class="bullet-list">
           <li>${todaySummary.weeklyAdvice}</li>
           <li>当前饮食阶段：${state.profile.nutritionPhase}，保持蛋白质稳定即可。</li>
-          <li>${state.profile.focusArea}是当前强化方向，本周可优先保证相关动作完整执行。</li>
+          <li>${escapeHtml(state.profile.focusArea)}是当前强化方向，本周可优先保证相关动作完整执行。</li>
           <li>最近平均睡眠 ${state.profile.sleepHours} 小时，建议本周至少 2 天补足到 7 小时以上。</li>
         </ul>
       </article>
+    </section>
+  `;
+}
+
+function renderWelcome() {
+  return `
+    <section class="welcome-screen">
+      <div class="welcome-orbit welcome-orbit-one"></div>
+      <div class="welcome-orbit welcome-orbit-two"></div>
+      <div class="welcome-content">
+        <div class="welcome-brand"><span>F</span> FORGE AI</div>
+        <div class="welcome-badge">AI 渐进训练教练 · 可运行 MVP</div>
+        <h1>让每次训练记录，<br><em>自动变成下一次计划。</em></h1>
+        <p class="welcome-lead">把真实重量、次数和 RPE 交给系统；它会生成可解释的渐进建议，也支持用自然语言调整今天练什么。</p>
+
+        <div class="welcome-paths">
+          <button type="button" class="welcome-path welcome-path-primary" data-welcome-demo>
+            <span class="welcome-path-tag">推荐 · 约 1 分钟</span>
+            <strong>使用示例档案快速体验</strong>
+            <small>直接查看今日计划、AI 调整和训练复盘完整闭环</small>
+            <span class="welcome-path-arrow">开始体验 →</span>
+          </button>
+          <button type="button" class="welcome-path" data-welcome-create>
+            <span class="welcome-path-tag">个性化 · 约 2 分钟</span>
+            <strong>创建我的训练档案</strong>
+            <small>填写目标、训练经验与恢复状态，生成你的第一份计划</small>
+            <span class="welcome-path-arrow">开始建档 →</span>
+          </button>
+        </div>
+
+        ${state.profileSetupComplete ? '<button type="button" class="welcome-continue" data-welcome-continue>继续上次训练</button>' : ''}
+
+        <div class="welcome-proof">
+          <div><strong>01</strong><span>基于完成记录</span></div>
+          <div><strong>02</strong><span>建议理由可解释</span></div>
+          <div><strong>03</strong><span>对话直接改计划</span></div>
+        </div>
+      </div>
+      <aside class="welcome-preview" aria-label="产品价值预览">
+        <div class="preview-label">TODAY · 智能建议</div>
+        <div class="preview-score">+2.5 <small>kg</small></div>
+        <h3>卧推可以小幅加重</h3>
+        <p>最近两次达到目标组次，平均 RPE 7.5，恢复状态支持推进。</p>
+        <div class="preview-flow">
+          <span>记录训练</span><b>→</b><span>分析表现</span><b>→</b><span>更新计划</span>
+        </div>
+        <div class="preview-chat">“今天只有 45 分钟”<br><strong>已保留主项和 2 个关键辅助动作</strong></div>
+      </aside>
     </section>
   `;
 }
@@ -735,7 +875,7 @@ function renderOnboarding() {
     : step === 2
       ? `
         ${selectField({ name: 'goal', label: '主目标', value: state.profile.goal, options: profileOptions.goals })}
-        <label>重点强化部位<input name="focusArea" value="${state.profile.focusArea}" /></label>
+        <label>重点强化部位<input name="focusArea" value="${escapeAttribute(state.profile.focusArea)}" /></label>
         ${selectField({ name: 'split', label: '训练分化', value: state.profile.split, options: profileOptions.splits })}
         ${numericField({ name: 'daysPerWeek', label: '每周训练天数', value: state.profile.daysPerWeek, min: 1, max: 7 })}
       `
@@ -743,7 +883,7 @@ function renderOnboarding() {
         ${numericField({ name: 'sleepHours', label: '平均睡眠（小时）', value: state.profile.sleepHours, min: 0, max: 24, step: '0.1' })}
         ${selectField({ name: 'stressLevel', label: '压力等级', value: state.profile.stressLevel, options: profileOptions.stressLevels })}
         ${selectField({ name: 'nutritionPhase', label: '饮食阶段', value: state.profile.nutritionPhase, options: profileOptions.nutritionPhases })}
-        <label>疼痛或旧伤<input name="painStatus" value="${state.profile.painStatus ?? '无'}" /></label>
+        <label>疼痛或旧伤<input name="painStatus" value="${escapeAttribute(state.profile.painStatus ?? '无')}" /></label>
       `;
 
   return `
@@ -1118,21 +1258,24 @@ function renderSync() {
             <div class="eyebrow">数据同步</div>
             <h3>训记连接与同步</h3>
           </div>
-          <span class="status-pill ${state.profile.xunjiConnected ? 'success' : 'neutral'}">${state.profile.xunjiConnected ? '已连接' : '未连接'}</span>
+          <span class="status-pill warning">部署演示模式</span>
         </div>
-        <p>通过训记 API Key 同步你的训练日期、动作、组数、重量、次数和部分主观强度信息。</p>
-        <label>API Key
-          <input id="apiKeyInput" value="${state.profile.apiKeyMasked}" />
+        <div class="deployment-notice">
+          <strong>当前为接口交互展示，不会连接训记或保存真实 Key。</strong>
+          <p>本地运行版已完成 Key 配置与同步流程骨架；受当前部署环境和官方接口权限限制，线上版使用模拟数据。获得训记官方能力后将接入真实训练记录。</p>
+        </div>
+        <label>训记 API Key（演示）
+          <input id="apiKeyInput" type="password" value="" placeholder="请勿输入真实 Key，点击下方按钮体验连接状态" autocomplete="off" />
         </label>
         <div class="metric-list mt-12">
           <div class="metric-row"><span>本地完成训练</span><strong>${completedDays} 天</strong></div>
           <div class="metric-row"><span>已记录动作</span><strong>${exerciseCount} 条</strong></div>
-          <div class="metric-row"><span>当前数据来源</span><strong>${state.profile.xunjiConnected ? '训记同步 + 本地记录' : '本地记录'}</strong></div>
+          <div class="metric-row"><span>当前数据来源</span><strong>${state.profile.xunjiConnected ? '模拟同步 + 本地记录' : '本地记录'}</strong></div>
           <div class="metric-row"><span>最近同步</span><strong>${state.profile.lastSyncText}</strong></div>
         </div>
         <div class="actions inline">
-          <button type="button" class="primary" data-update-key>保存 Key</button>
-          <button type="button" class="primary" data-mock-sync>立即同步</button>
+          <button type="button" class="primary" data-update-key>模拟连接</button>
+          <button type="button" class="primary ghost" data-mock-sync>模拟同步</button>
         </div>
       </article>
 
@@ -1174,10 +1317,10 @@ function renderSettings() {
           <legend><span>02</span><div><strong>训练目标与偏好</strong><small>长期方向，不直接覆盖今天的训练日</small></div></legend>
           <div class="form-grid cols-2">
             ${selectField({ name: 'goal', label: '目标模式', value: state.profile.goal, options: profileOptions.goals })}
-            <label>强化方向<input name="focusArea" value="${state.profile.focusArea}" /></label>
+            <label>强化方向<input name="focusArea" value="${escapeAttribute(state.profile.focusArea)}" /></label>
             ${selectField({ name: 'split', label: '训练分化', value: state.profile.split, options: profileOptions.splits })}
             ${numericField({ name: 'daysPerWeek', label: '每周训练天数', value: state.profile.daysPerWeek, min: 1, max: 7 })}
-            <label>疼痛或旧伤<input name="painStatus" value="${state.profile.painStatus ?? '无'}" /></label>
+            <label>疼痛或旧伤<input name="painStatus" value="${escapeAttribute(state.profile.painStatus ?? '无')}" /></label>
           </div>
         </fieldset>
         <fieldset class="settings-section">
@@ -1287,6 +1430,11 @@ function renderChat() {
     document.body.appendChild(chatRoot);
   }
 
+  if (state.currentPage === 'welcome') {
+    chatRoot.innerHTML = '';
+    return;
+  }
+
   if (!state.chatOpen) {
     chatRoot.innerHTML = `
       <button type="button" class="chat-fab" data-chat-toggle aria-label="打开 AI 健身教练">
@@ -1300,6 +1448,7 @@ function renderChat() {
   const modeMeta = {
     live: { label: '大模型在线', className: 'success' },
     mock: { label: '本地规则回复', className: 'neutral' },
+    rule: { label: '规则问答 · 离线可用', className: 'neutral' },
     'mock-fallback': { label: '大模型失败 · 本地兜底', className: 'warning' },
     fallback: { label: '本地计划兜底', className: 'warning' },
     error: { label: '服务暂时不可用', className: 'warning' },
@@ -1319,7 +1468,7 @@ function renderChat() {
         ${state.chatMessages.map((message, index) => `
           <div class="chat-row ${message.role === 'user' ? 'chat-row-user' : 'chat-row-assistant'}">
             <div class="chat-message-block">
-              <div class="chat-bubble ${message.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant'}">${message.content}</div>
+              <div class="chat-bubble ${message.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant'}">${escapeHtml(message.content)}</div>
               ${message.role === 'assistant' ? `
                 <div class="chat-feedback">
                   ${message.feedback ? `
@@ -1341,9 +1490,9 @@ function renderChat() {
         ` : ''}
       </div>
       <div class="chat-input-wrap">
-        ${isStandaloneMode ? '<div class="chat-tip">对话功能需要启动后端服务，请参考 README 使用 npm run dev 启动。</div>' : ''}
-        <textarea id="chatInput" class="chat-input" placeholder="比如：今天卧推该不该加重？" ${isStandaloneMode ? 'disabled' : ''}>${state.chatInput}</textarea>
-        <button type="button" class="primary chat-send" data-chat-send ${isStandaloneMode ? 'disabled' : ''}>发送</button>
+        ${isStandaloneMode ? '<div class="chat-tip">当前为离线规则问答；接入平台 AI 后会自动切换为大模型回复。</div>' : ''}
+        <textarea id="chatInput" class="chat-input" placeholder="比如：今天卧推该不该加重？">${escapeHtml(state.chatInput)}</textarea>
+        <button type="button" class="primary chat-send" data-chat-send>发送</button>
       </div>
     </section>
   `;
@@ -1353,10 +1502,25 @@ function renderChat() {
   });
 }
 
+async function requestChatCompletion(payload) {
+  if (typeof window.__FORGE_AI_CHAT__ === 'function') {
+    const result = await window.__FORGE_AI_CHAT__(payload);
+    return typeof result === 'string' ? { reply: result, mode: 'live' } : result;
+  }
+  if (isStandaloneMode) throw new Error('standalone_rule_mode');
+  const response = await fetch(`${API_BASE}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw new Error(`chat_api_${response.status}`);
+  return response.json();
+}
+
 async function sendChatMessage() {
   const input = document.getElementById('chatInput');
   const content = (input?.value ?? state.chatInput ?? '').trim();
-  if (!content || state.chatLoading || isStandaloneMode) return;
+  if (!content || state.chatLoading) return;
 
   state.chatMessages.push({ role: 'user', content });
   state.chatInput = '';
@@ -1365,29 +1529,27 @@ async function sendChatMessage() {
   render();
 
   try {
-    const response = await fetch(`${API_BASE}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: state.chatMessages.map(({ role, content: text }) => ({ role, content: text })),
+    let data;
+    try {
+      data = await requestChatCompletion({
+        messages: state.chatMessages.slice(-12).map(({ role, content: text }) => ({ role, content: text })),
         profile: state.profile,
         trainingPlans: state.trainingPlans,
         workoutLogs: state.workoutLogs,
         workouts: state.workoutLogs,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`chat_api_${response.status}`);
+        clientDate: localDateKey(),
+      });
+    } catch {
+      data = { reply: generateLocalRuleReply(content), mode: 'rule' };
     }
-
-    const data = await response.json();
 
     // ── 处理 Function Call（AI 要求修改计划）──
     if (data.functionCall) {
       let instruction;
       try {
-        instruction = JSON.parse(data.functionCall.arguments);
+        instruction = typeof data.functionCall.arguments === 'string'
+          ? JSON.parse(data.functionCall.arguments)
+          : data.functionCall.arguments;
       } catch {
         instruction = null;
       }
@@ -1494,8 +1656,8 @@ async function sendChatMessage() {
   } catch {
     state.chatMessages.push({
       role: 'assistant',
-      content: '当前暂时无法连接教练服务。请先确认后端是否已通过 npm run dev 启动，然后再试一次。',
-      mode: 'error',
+      content: generateLocalRuleReply(content),
+      mode: 'rule',
       feedback: null,
     });
   } finally {
@@ -1506,6 +1668,7 @@ async function sendChatMessage() {
 }
 
 function renderPage(derived) {
+  if (state.currentPage === 'welcome') return renderWelcome();
   if (state.currentPage === 'onboarding') return renderOnboarding();
   if (state.currentPage === 'dashboard') return renderDashboard(derived);
   if (state.currentPage === 'today') return renderToday(derived);
@@ -1587,6 +1750,59 @@ function saveCompletedWorkout() {
 root.addEventListener('click', (event) => {
   const button = event.target.closest('button');
   if (!button) return;
+
+  if ('welcomeDemo' in button.dataset) {
+    markWelcomeSeen();
+    state.profile = defaultProfile();
+    state.profileSetupComplete = true;
+    state.workoutLogs = createDemoWorkoutLogs();
+    state.trainingPlans = createDefaultTrainingPlans(state.profile);
+    state.syncLog = defaultSyncLog();
+    state.chatMessages = defaultChatMessages();
+    state.todayPreference = 'standard';
+    state.todaySessionConfirmed = false;
+    state.todaySessionDate = localDateKey();
+    state.guideStep = 0;
+    setDemoMode(true);
+    try {
+      localStorage.removeItem('fitness-guide-complete-v1');
+      localStorage.setItem('fitness-guide-step-v1', '0');
+    } catch {}
+    saveProfile();
+    refreshHeader();
+    state.currentPage = 'dashboard';
+    renderToast('已载入示例档案，跟着引导体验完整训练闭环。');
+    render();
+    return;
+  }
+
+  if ('welcomeCreate' in button.dataset) {
+    markWelcomeSeen();
+    state.profile = { ...defaultProfile(), name: '', xunjiConnected: false, apiKeyMasked: '', lastSyncText: '尚未同步' };
+    state.profileSetupComplete = false;
+    state.workoutLogs = [];
+    state.trainingPlans = createDefaultTrainingPlans(state.profile);
+    state.syncLog = [];
+    state.chatMessages = defaultChatMessages();
+    state.todayPreference = 'standard';
+    state.todaySessionConfirmed = false;
+    state.todaySessionDate = localDateKey();
+    state.onboardingStep = 1;
+    state.guideStep = 0;
+    setDemoMode(false);
+    saveProfile();
+    refreshHeader();
+    state.currentPage = 'onboarding';
+    render();
+    return;
+  }
+
+  if ('welcomeContinue' in button.dataset) {
+    markWelcomeSeen();
+    state.currentPage = state.profileSetupComplete ? 'dashboard' : 'onboarding';
+    render();
+    return;
+  }
 
   if ('onboardingNext' in button.dataset || 'onboardingFinish' in button.dataset) {
     const form = document.getElementById('onboardingForm');
@@ -1697,20 +1913,17 @@ root.addEventListener('click', (event) => {
   }
 
   if ('updateKey' in button.dataset) {
-    const value = document.getElementById('apiKeyInput')?.value?.trim();
-    if (value) {
-      state.profile.apiKeyMasked = value;
-      state.profile.xunjiConnected = true;
-      saveProfile();
-      renderToast('已保存训记 API Key。');
-      render();
-    }
+    state.profile.apiKeyMasked = 'xj_demo_****_FORGE';
+    state.profile.xunjiConnected = true;
+    saveProfile();
+    renderToast('已模拟连接；演示环境没有保存或发送任何真实 Key。');
+    render();
     return;
   }
 
   if ('mockSync' in button.dataset) {
-    state.profile.lastSyncText = '刚刚';
-    addSyncLog('同步成功，已刷新当前训练建议');
+    state.profile.lastSyncText = '模拟：刚刚';
+    addSyncLog('模拟同步成功，已刷新当前训练建议');
     saveProfile();
     refreshHeader();
     renderToast('已模拟完成同步。');
@@ -1812,9 +2025,6 @@ document.body.addEventListener('click', (event) => {
         userMessage: userMsg?.content || '',
         aiReply: msg.content,
         rating,
-        profile: state.profile,
-        trainingPlans: state.trainingPlans,
-        workoutLogs: state.workoutLogs,
         mode: msg.mode || 'unknown',
       }),
     }).catch(() => {});
@@ -1836,9 +2046,6 @@ document.body.addEventListener('click', (event) => {
         aiReply: msg.content,
         rating: 'report',
         reason: '用户主动上报：问题未解决',
-        profile: state.profile,
-        trainingPlans: state.trainingPlans,
-        workoutLogs: state.workoutLogs,
         mode: msg.mode || 'unknown',
       }),
     })
@@ -1866,11 +2073,14 @@ function render() {
   let derived;
   try {
     derived = computeState();
+    document.body.classList.toggle('welcome-mode', state.currentPage === 'welcome');
     renderNav();
-    topbarTitle.textContent = state.currentPage === 'onboarding'
+    topbarTitle.textContent = state.currentPage === 'welcome'
+      ? '欢迎使用'
+      : state.currentPage === 'onboarding'
       ? '完成训练档案'
       : (navItems.find((item) => item.key === state.currentPage)?.label ?? '健身进阶推荐器');
-    root.innerHTML = `${renderPage(derived)}${renderDayDrawer()}`;
+    root.innerHTML = `${renderPage(derived)}${state.currentPage === 'welcome' ? '' : renderDayDrawer()}`;
     mountMuscleMaps();
   } catch (err) {
     console.error('[render] error:', err);

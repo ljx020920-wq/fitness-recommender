@@ -179,13 +179,16 @@ const PLAN_TOOLS = [
 
 app.post('/api/chat', async (req, res) => {
   try {
-    const { messages = [], profile = {}, trainingPlans = [], workoutLogs = [], workouts = [] } = req.body || {};
+    const { messages = [], profile = {}, trainingPlans = [], workoutLogs = [], workouts = [], clientDate = '' } = req.body || {};
     const completedLogs = workoutLogs.length ? workoutLogs : workouts;
+    const today = /^\d{4}-\d{2}-\d{2}$/.test(clientDate)
+      ? clientDate
+      : new Date().toLocaleDateString('en-CA');
 
     const systemPrompt = [
       '你是一个专业的健身训练教练 AI 助手。你正在帮助一位用户进行训练决策。以下是用户的档案信息、预计算指标、本周计划和训练记录数据，请基于这些数据回答用户的问题。回答风格要专业但亲切，像一位有经验的私人教练。',
       '数据边界：trainingPlans 只表示未来或今日计划，不能当作用户已经完成；workoutLogs 才是实际完成记录。重量、RPE、达标率和加重判断只能依据 workoutLogs。',
-      `今天的本地日期是 ${new Date().toLocaleDateString('en-CA')}，用户说“今天”时，modify_plan 的 targetDate 必须使用这个日期。`,
+      `今天的用户本地日期是 ${today}，用户说“今天”时，modify_plan 的 targetDate 必须使用这个日期。`,
       '',
       '【核心能力 - 你可以调用工具修改计划】',
       '你具备修改用户训练计划的能力。你配备了 modify_plan 工具，当用户要求调整计划时，**必须调用该工具执行修改，绝不能只口头回复**。',
