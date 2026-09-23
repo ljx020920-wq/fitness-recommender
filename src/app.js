@@ -8,13 +8,21 @@ const isStandaloneMode = Boolean(window.__FITNESS_STANDALONE__) || window.locati
 const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001' : '';
 
 const initialProfile = loadProfile();
+const initialTodaySession = loadTodaySession();
+const initialProfileSetupComplete = loadProfileSetupComplete();
 
 const state = {
-  currentPage: 'dashboard',
+  currentPage: initialProfileSetupComplete ? 'dashboard' : 'onboarding',
   profile: initialProfile,
   workoutLogs: loadWorkoutLogs(),
   trainingPlans: loadTrainingPlans(initialProfile),
-  todayPreference: 'standard',
+  todayPreference: initialTodaySession.preference,
+  todaySessionConfirmed: initialTodaySession.confirmed,
+  todaySessionDate: initialTodaySession.date,
+  profileSetupComplete: initialProfileSetupComplete,
+  onboardingStep: 1,
+  onboardingOriginalProfile: null,
+  guideStep: loadGuideComplete() ? null : 0,
   analysisMuscleFilter: 'all',
   weekOffset: 0,
   selectedDayDate: null,
@@ -27,6 +35,39 @@ const state = {
 
 function defaultProfile() {
   return JSON.parse(JSON.stringify(userProfile));
+}
+
+function loadProfileSetupComplete() {
+  try {
+    const explicit = localStorage.getItem('fitness-profile-complete-v1');
+    if (explicit != null) return explicit === 'true';
+    return Boolean(localStorage.getItem('fitness-profile-demo'));
+  } catch {
+    return false;
+  }
+}
+
+function loadGuideComplete() {
+  try {
+    return localStorage.getItem('fitness-guide-complete-v1') === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function loadTodaySession() {
+  const fallback = { date: localDateKey(), preference: 'standard', confirmed: false };
+  try {
+    const saved = JSON.parse(localStorage.getItem('fitness-today-session-v1') || 'null');
+    if (!saved || saved.date !== fallback.date) return fallback;
+    return {
+      date: fallback.date,
+      preference: saved.preference || 'standard',
+      confirmed: Boolean(saved.confirmed),
+    };
+  } catch {
+    return fallback;
+  }
 }
 
 function loadProfile() {
@@ -206,6 +247,12 @@ function loadChatMessages() {
 function saveProfile() {
   try {
     localStorage.setItem('fitness-profile-demo', JSON.stringify(state.profile));
+    localStorage.setItem('fitness-profile-complete-v1', String(state.profileSetupComplete));
+    localStorage.setItem('fitness-today-session-v1', JSON.stringify({
+      date: state.todaySessionDate,
+      preference: state.todayPreference,
+      confirmed: state.todaySessionConfirmed,
+    }));
     localStorage.setItem('fitness-workout-logs-v1', JSON.stringify(state.workoutLogs));
     localStorage.setItem('fitness-training-plans-v1', JSON.stringify(state.trainingPlans));
     localStorage.setItem('fitness-workouts-demo', JSON.stringify(state.workoutLogs));
@@ -225,15 +272,28 @@ function addSyncLog(message) {
 }
 
 function computeState() {
+  const today = localDateKey();
+  if (state.todaySessionDate !== today) {
+    state.todaySessionDate = today;
+    state.todayPreference = 'standard';
+    state.todaySessionConfirmed = false;
+  }
   const todayPlan = state.trainingPlans.find((plan) => plan.date === localDateKey())
     ?? state.trainingPlans.find((plan) => plan.status === 'planned')
     ?? null;
   if (todayPlan && state.profile.currentDayType !== todayPlan.dayType) {
     state.profile.currentDayType = todayPlan.dayType;
   }
+  const allowedPreferences = todayPlan?.dayType === '腿训练日'
+    ? ['standard', 'glute', 'quad', 'low_fatigue', 'quick']
+    : ['standard', 'full', 'low_fatigue', 'quick', 'cardio'];
+  if (!allowedPreferences.includes(state.todayPreference)) {
+    state.todayPreference = 'standard';
+    state.todaySessionConfirmed = false;
+  }
   return {
     todayPlan,
-    dashboard: buildDashboard(state.profile, state.workoutLogs, todayPlan),
+    dashboard: buildDashboard(state.profile, state.workoutLogs, todayPlan, state.todayPreference),
     today: buildWorkoutRecommendations(state.profile, state.workoutLogs, todayPlan?.dayType ?? state.profile.currentDayType, state.todayPreference, todayPlan),
     analysis: buildAnalysis(state.profile, state.workoutLogs),
   };
@@ -255,12 +315,11 @@ function numericField({ name, label, value, min, max, step = '1' }) {
 
 const navItems = [
   { key: 'dashboard', label: '首页' },
-  { key: 'profile', label: '首次建档' },
   { key: 'today', label: '今日建议' },
   { key: 'record', label: '记录训练' },
   { key: 'analysis', label: '训练分析' },
   { key: 'sync', label: '数据同步' },
-  { key: 'settings', label: '个人设置' },
+  { key: 'settings', label: '个人资料与设置' },
 ];
 
 const nav = document.querySelector('#nav');
@@ -290,6 +349,10 @@ syncNowBtn.addEventListener('click', () => {
 });
 
 function renderNav() {
+  if (!state.profileSetupComplete) {
+    nav.innerHTML = '<button class="nav-item active" type="button" disabled>完成首次建档</button>';
+    return;
+  }
   nav.innerHTML = navItems
     .map(
       (item) => `
@@ -479,11 +542,43 @@ function renderDayDrawer() {
   `;
 }
 
+function renderFirstUseGuide() {
+  if (state.guideStep == null) return '';
+  const steps = [
+    { title: '先确认今天练什么', text: '系统已根据训练日和恢复状态生成计划，你可以按时间和状态微调。', page: 'today', action: '查看今日计划' },
+    { title: '训练时记录真实完成情况', text: '重量、组数、次数和 RPE 只有提交后才会影响下一次建议。', page: 'record', action: '看看如何记录' },
+    { title: '完成后查看训练复盘', text: '分析页会汇总动作趋势、训练量和下一次推进建议。', page: 'analysis', action: '查看分析页' },
+  ];
+  const current = steps[state.guideStep] ?? steps[0];
+  return `
+    <section class="guide-card">
+      <div>
+        <div class="eyebrow">首次使用引导 · ${state.guideStep + 1}/${steps.length}</div>
+        <h3>${current.title}</h3>
+        <p>${current.text}</p>
+      </div>
+      <div class="guide-actions">
+        <button type="button" class="primary ghost" data-guide-skip>跳过引导</button>
+        <button type="button" class="primary ghost" data-guide-page="${current.page}">${current.action}</button>
+        <button type="button" class="primary" data-guide-next>${state.guideStep === steps.length - 1 ? '完成引导' : '下一步'}</button>
+      </div>
+    </section>
+  `;
+}
+
 function renderDashboard(derived) {
   const { recovery, todaySummary, improving, stalled, fatigue } = derived.dashboard;
   const muscles = [...new Set(todaySummary.exerciseRecommendations.map((item) => item.muscle))];
+  const activeCustomization = buildTodayCustomization(todaySummary);
+  const isCompleted = derived.todayPlan?.status === 'completed';
+  const primaryAction = isCompleted
+    ? { page: 'analysis', label: '查看今日复盘' }
+    : state.todaySessionConfirmed
+      ? { page: 'record', label: '开始训练' }
+      : { page: 'today', label: '确认今日计划' };
   return `
     ${renderWeekStrip()}
+    ${renderFirstUseGuide()}
     <section class="grid cols-2 hero-grid">
       <article class="card hero-card gradient">
         <div class="card-header">
@@ -491,9 +586,13 @@ function renderDashboard(derived) {
             <div class="eyebrow">今日训练计划摘要</div>
             <h3>${todaySummary.dayType} · ${todaySummary.dayStatus}</h3>
           </div>
-          <div class="actions inline compact-actions"><button type="button" class="primary ghost" data-jump="today">查看建议</button><button type="button" class="primary" data-jump="record">开始训练</button></div>
+          <div class="actions inline compact-actions"><button type="button" class="primary ghost" data-jump="today">查看建议</button><button type="button" class="primary" data-jump="${primaryAction.page}">${primaryAction.label}</button></div>
         </div>
         <p>${todaySummary.daySummary}</p>
+        <div class="chip-row dashboard-session-state">
+          <span class="chip">本次模式：${activeCustomization.title}</span>
+          <span class="status-pill ${state.todaySessionConfirmed ? 'success' : 'neutral'}">${state.todaySessionConfirmed ? '今日方案已确认' : '等待确认今日方案'}</span>
+        </div>
         <div class="recommendation-list short">
           ${todaySummary.exerciseRecommendations.map((item) => `
             <div class="recommendation-row">
@@ -576,36 +675,65 @@ function renderDashboard(derived) {
   `;
 }
 
-function renderProfile() {
-  return `
-    <section class="card form-card wide">
-      <div class="card-header">
-        <div>
-          <div class="eyebrow">首次建档</div>
-          <h3>你的当前训练画像</h3>
-        </div>
-        <span class="status-pill neutral">可直接修改</span>
-      </div>
-      <form id="profileForm" class="form-grid cols-2">
-        ${selectField({ name: 'gender', label: '性别', value: state.profile.gender, options: profileOptions.genders })}
-        ${numericField({ name: 'age', label: '年龄', value: state.profile.age, min: 16, max: 80 })}
-        ${numericField({ name: 'height', label: '身高（cm）', value: state.profile.height, min: 130, max: 230 })}
-        ${numericField({ name: 'weight', label: '体重（kg）', value: state.profile.weight, min: 30, max: 200, step: '0.1' })}
-        ${numericField({ name: 'bodyFat', label: '体脂率（%）', value: state.profile.bodyFat, min: 3, max: 60, step: '0.1' })}
-        ${numericField({ name: 'experienceMonths', label: '训练经验（月）', value: state.profile.experienceMonths, min: 0, max: 600 })}
+function renderOnboarding() {
+  const step = state.onboardingStep;
+  const stepMeta = [
+    { title: '先认识你的身体', subtitle: '这些基础信息用于估算训练负荷与恢复需求。' },
+    { title: '明确训练方向', subtitle: '告诉系统你想取得什么结果，以及每周能投入多少时间。' },
+    { title: '补充恢复状态', subtitle: '睡眠、压力和旧伤会直接影响每天的训练建议。' },
+  ][step - 1];
+  const fields = step === 1
+    ? `
+      ${selectField({ name: 'gender', label: '性别', value: state.profile.gender, options: profileOptions.genders })}
+      ${numericField({ name: 'age', label: '年龄', value: state.profile.age, min: 16, max: 80 })}
+      ${numericField({ name: 'height', label: '身高（cm）', value: state.profile.height, min: 130, max: 230 })}
+      ${numericField({ name: 'weight', label: '体重（kg）', value: state.profile.weight, min: 30, max: 200, step: '0.1' })}
+      ${numericField({ name: 'bodyFat', label: '体脂率（%）', value: state.profile.bodyFat, min: 3, max: 60, step: '0.1' })}
+      ${numericField({ name: 'experienceMonths', label: '训练经验（月）', value: state.profile.experienceMonths, min: 0, max: 600 })}
+    `
+    : step === 2
+      ? `
+        ${selectField({ name: 'goal', label: '主目标', value: state.profile.goal, options: profileOptions.goals })}
+        <label>重点强化部位<input name="focusArea" value="${state.profile.focusArea}" /></label>
         ${selectField({ name: 'split', label: '训练分化', value: state.profile.split, options: profileOptions.splits })}
         ${numericField({ name: 'daysPerWeek', label: '每周训练天数', value: state.profile.daysPerWeek, min: 1, max: 7 })}
-        ${selectField({ name: 'goal', label: '主目标', value: state.profile.goal, options: profileOptions.goals })}
-        <label>强化部位<input name="focusArea" value="${state.profile.focusArea}" /></label>
+      `
+      : `
         ${numericField({ name: 'sleepHours', label: '平均睡眠（小时）', value: state.profile.sleepHours, min: 0, max: 24, step: '0.1' })}
         ${selectField({ name: 'stressLevel', label: '压力等级', value: state.profile.stressLevel, options: profileOptions.stressLevels })}
-        ${selectField({ name: 'currentDayType', label: '当前训练日', value: state.profile.currentDayType, options: profileOptions.dayTypes })}
-        <label>疼痛/旧伤<input name="painStatus" value="${state.profile.painStatus ?? '无'}" /></label>
-      </form>
-      <div class="actions inline">
-        <button type="button" class="primary" data-save="profileForm">保存档案</button>
-        <button type="button" class="primary ghost" data-reset-profile>恢复示例</button>
-      </div>
+        ${selectField({ name: 'nutritionPhase', label: '饮食阶段', value: state.profile.nutritionPhase, options: profileOptions.nutritionPhases })}
+        <label>疼痛或旧伤<input name="painStatus" value="${state.profile.painStatus ?? '无'}" /></label>
+      `;
+
+  return `
+    <section class="onboarding-shell">
+      <article class="card onboarding-card">
+        <div class="onboarding-progress" aria-label="建档进度">
+          ${[1, 2, 3].map((item) => `<span class="${item <= step ? 'active' : ''}"></span>`).join('')}
+        </div>
+        <div class="eyebrow">首次建档 · 第 ${step}/3 步</div>
+        <h2>${stepMeta.title}</h2>
+        <p class="muted">${stepMeta.subtitle}</p>
+        <form id="onboardingForm" class="form-grid cols-2 onboarding-form">${fields}</form>
+        <div class="onboarding-actions">
+          <div>
+            ${state.profileSetupComplete ? '<button type="button" class="primary ghost" data-onboarding-cancel>取消重新评估</button>' : ''}
+          </div>
+          <div class="actions inline">
+            ${step > 1 ? '<button type="button" class="primary ghost" data-onboarding-back>上一步</button>' : ''}
+            <button type="button" class="primary" ${step === 3 ? 'data-onboarding-finish' : 'data-onboarding-next'}>${step === 3 ? '完成并生成计划' : '下一步'}</button>
+          </div>
+        </div>
+      </article>
+      <aside class="onboarding-side card">
+        <div class="eyebrow">完成后你会得到</div>
+        <h3>一条清晰的训练路径</h3>
+        <ol class="journey-list">
+          <li><span>1</span><div><strong>确认今日计划</strong><small>根据时间和状态微调一次训练</small></div></li>
+          <li><span>2</span><div><strong>开始并记录</strong><small>填写真实重量、次数和 RPE</small></div></li>
+          <li><span>3</span><div><strong>查看复盘</strong><small>让下一次建议基于真实完成情况</small></div></li>
+        </ol>
+      </aside>
     </section>
   `;
 }
@@ -614,6 +742,25 @@ function renderToday(derived) {
   const plan = derived.today;
   const todayPlan = derived.todayPlan;
   const customization = buildTodayCustomization(plan);
+  const standardPlan = buildWorkoutRecommendations(
+    state.profile,
+    state.workoutLogs,
+    todayPlan?.dayType ?? state.profile.currentDayType,
+    'standard',
+    todayPlan,
+  );
+  const standardNames = standardPlan.exerciseRecommendations.map((item) => item.name);
+  const currentNames = plan.exerciseRecommendations.map((item) => item.name);
+  const removedNames = standardNames.filter((name) => !currentNames.includes(name));
+  const estimatedMinutes = {
+    standard: '约 60 分钟',
+    full: '约 75 分钟',
+    low_fatigue: '约 45-55 分钟',
+    quick: '约 45 分钟',
+    cardio: '约 80-90 分钟',
+    glute: '约 65 分钟',
+    quad: '约 60 分钟',
+  }[state.todayPreference] ?? '约 60 分钟';
   const isLegDay = plan.dayType === '腿训练日';
   const preferenceChips = isLegDay
     ? [
@@ -637,7 +784,7 @@ function renderToday(derived) {
     <section class="card hero-card">
       <div class="card-header align-start">
         <div><div class="eyebrow">今日训练建议 · ${todayPlan?.status === 'completed' ? '已完成' : '计划中'}</div><h3>${plan.dayType} · ${plan.dayStatus}</h3><p>${plan.daySummary}</p></div>
-        ${plan.dayType !== '休息日' ? '<button type="button" class="primary" data-jump="record">填写实际训练</button>' : ''}
+        ${plan.dayType !== '休息日' && state.todaySessionConfirmed ? '<button type="button" class="primary" data-jump="record">开始记录训练</button>' : ''}
       </div>
       <div class="chip-row">
         <span class="chip">最近训练：${plan.latestDate ?? '暂无'}</span>
@@ -657,6 +804,19 @@ function renderToday(derived) {
         ${preferenceChips.map((chip) => `
           <button type="button" class="chip chip-button ${activePref === chip.key ? 'chip-active' : ''}" data-pref="${chip.key}">${chip.label}</button>
         `).join('')}
+      </div>
+      <div class="session-plan-summary ${state.todaySessionConfirmed ? 'is-confirmed' : ''}">
+        <div class="session-plan-main">
+          <span class="status-pill ${state.todaySessionConfirmed ? 'success' : 'neutral'}">${state.todaySessionConfirmed ? '已应用到今天' : '待确认'}</span>
+          <div>
+            <div class="eyebrow">本次训练方案</div>
+            <h4>${customization.title} · ${estimatedMinutes}</h4>
+            <p>${standardNames.length} 个动作 → ${currentNames.length} 个动作${state.todayPreference === 'cardio' ? '，并追加训练后有氧' : ''}</p>
+          </div>
+        </div>
+        <button type="button" class="primary" data-start-session>按此方案开始</button>
+        ${removedNames.length ? `<div class="session-plan-note"><strong>本次省略：</strong>${removedNames.join('、')}</div>` : ''}
+        ${state.todayPreference === 'cardio' ? '<div class="session-plan-note"><strong>新增安排：</strong>力量训练后完成 20-30 分钟中低强度有氧。</div>' : ''}
       </div>
       <div class="detail-box">
         <div><span class="detail-label">当前模式</span>${customization.title}</div>
@@ -742,10 +902,17 @@ function renderRecord(derived) {
       <div>
         <div class="eyebrow">实际完成记录 · ${localDateKey()}</div>
         <h3>${plan.dayType}</h3>
-        <p>计划只负责告诉你“准备怎么练”；只有提交这里的数据，才会进入训练分析与下次推荐。</p>
+        <p>当前采用“${buildTodayCustomization(plan).title}”。只有提交这里的数据，才会进入训练分析与下次推荐。</p>
       </div>
       <span class="status-pill ${existingLog ? 'success' : 'neutral'}">${existingLog ? '今天已有完成记录' : '尚未完成'}</span>
     </section>
+
+    ${state.todayPreference === 'cardio' ? `
+      <section class="card cardio-addon-card section-gap">
+        <div><div class="eyebrow">本次附加安排</div><h3>力量训练后有氧</h3></div>
+        <div><strong>20-30 分钟</strong><p class="muted">中低强度，保持可以短句交流的节奏；暂不计入力量训练分析。</p></div>
+      </section>
+    ` : ''}
 
     <form id="workoutRecordForm" class="record-stack" data-plan-id="${todayPlan?.id ?? ''}">
       ${plan.exerciseRecommendations.map((item, index) => {
@@ -942,22 +1109,46 @@ function renderSync() {
 function renderSettings() {
   return `
     <section class="card form-card wide">
-      <div class="eyebrow">个人设置</div>
-      <form id="settingsForm" class="form-grid cols-2">
-        ${selectField({ name: 'goal', label: '目标模式', value: state.profile.goal, options: profileOptions.goals })}
-        <label>强化方向<input name="focusArea" value="${state.profile.focusArea}" /></label>
-        ${selectField({ name: 'split', label: '训练分化', value: state.profile.split, options: profileOptions.splits })}
-        ${numericField({ name: 'daysPerWeek', label: '每周训练天数', value: state.profile.daysPerWeek, min: 1, max: 7 })}
-        ${selectField({ name: 'nutritionPhase', label: '饮食阶段', value: state.profile.nutritionPhase, options: profileOptions.nutritionPhases })}
-        ${selectField({ name: 'proteinCompliance', label: '蛋白质执行度', value: state.profile.proteinCompliance, options: profileOptions.proteinComplianceLevels })}
-        ${numericField({ name: 'sleepHours', label: '平均睡眠', value: state.profile.sleepHours, min: 0, max: 24, step: '0.1' })}
-        ${selectField({ name: 'stressLevel', label: '压力等级', value: state.profile.stressLevel, options: profileOptions.stressLevels })}
-        ${selectField({ name: 'currentDayType', label: '当前训练日', value: state.profile.currentDayType, options: profileOptions.dayTypes })}
-        <label>疼痛/旧伤<input name="painStatus" value="${state.profile.painStatus ?? '无'}" /></label>
+      <div class="card-header align-start">
+        <div><div class="eyebrow">个人资料与训练设置</div><h3>统一维护长期资料</h3><p class="muted">“今天练什么”由今日计划控制，不再与长期设置混在一起。</p></div>
+        <button type="button" class="primary ghost" data-reassess>重新评估</button>
+      </div>
+      <form id="settingsForm" class="settings-sections">
+        <fieldset class="settings-section">
+          <legend><span>01</span><div><strong>身体资料</strong><small>用于估算负荷与恢复需求</small></div></legend>
+          <div class="form-grid cols-2">
+            ${selectField({ name: 'gender', label: '性别', value: state.profile.gender, options: profileOptions.genders })}
+            ${numericField({ name: 'age', label: '年龄', value: state.profile.age, min: 16, max: 80 })}
+            ${numericField({ name: 'height', label: '身高（cm）', value: state.profile.height, min: 130, max: 230 })}
+            ${numericField({ name: 'weight', label: '体重（kg）', value: state.profile.weight, min: 30, max: 200, step: '0.1' })}
+            ${numericField({ name: 'bodyFat', label: '体脂率（%）', value: state.profile.bodyFat, min: 3, max: 60, step: '0.1' })}
+            ${numericField({ name: 'experienceMonths', label: '训练经验（月）', value: state.profile.experienceMonths, min: 0, max: 600 })}
+          </div>
+        </fieldset>
+        <fieldset class="settings-section">
+          <legend><span>02</span><div><strong>训练目标与偏好</strong><small>长期方向，不直接覆盖今天的训练日</small></div></legend>
+          <div class="form-grid cols-2">
+            ${selectField({ name: 'goal', label: '目标模式', value: state.profile.goal, options: profileOptions.goals })}
+            <label>强化方向<input name="focusArea" value="${state.profile.focusArea}" /></label>
+            ${selectField({ name: 'split', label: '训练分化', value: state.profile.split, options: profileOptions.splits })}
+            ${numericField({ name: 'daysPerWeek', label: '每周训练天数', value: state.profile.daysPerWeek, min: 1, max: 7 })}
+            <label>疼痛或旧伤<input name="painStatus" value="${state.profile.painStatus ?? '无'}" /></label>
+          </div>
+        </fieldset>
+        <fieldset class="settings-section">
+          <legend><span>03</span><div><strong>恢复与营养</strong><small>影响每日建议的保守或推进程度</small></div></legend>
+          <div class="form-grid cols-2">
+            ${selectField({ name: 'nutritionPhase', label: '饮食阶段', value: state.profile.nutritionPhase, options: profileOptions.nutritionPhases })}
+            ${selectField({ name: 'proteinCompliance', label: '蛋白质执行度', value: state.profile.proteinCompliance, options: profileOptions.proteinComplianceLevels })}
+            ${numericField({ name: 'sleepHours', label: '平均睡眠（小时）', value: state.profile.sleepHours, min: 0, max: 24, step: '0.1' })}
+            ${selectField({ name: 'stressLevel', label: '压力等级', value: state.profile.stressLevel, options: profileOptions.stressLevels })}
+          </div>
+        </fieldset>
       </form>
       <div class="actions inline">
-        <button type="button" class="primary" data-save="settingsForm">保存设置</button>
-        <button type="button" class="primary ghost" data-page-jump="today">查看新建议</button>
+        <button type="button" class="primary" data-save="settingsForm">保存全部设置</button>
+        <button type="button" class="primary ghost" data-page-jump="today">查看今日计划</button>
+        <button type="button" class="primary ghost" data-reset-profile>恢复示例数据</button>
       </div>
     </section>
   `;
@@ -1150,6 +1341,9 @@ async function sendChatMessage() {
           state.trainingPlans = nextPlans;
           if (instruction.targetDate === localDateKey() && result.newWorkout) {
             state.profile.currentDayType = result.newWorkout.dayType;
+            state.todayPreference = 'standard';
+            state.todaySessionConfirmed = false;
+            state.todaySessionDate = localDateKey();
           }
           saveProfile();
 
@@ -1198,6 +1392,9 @@ async function sendChatMessage() {
           state.trainingPlans = nextPlans;
           if (fallbackInstruction.targetDate === localDateKey() && result.newWorkout) {
             state.profile.currentDayType = result.newWorkout.dayType;
+            state.todayPreference = 'standard';
+            state.todaySessionConfirmed = false;
+            state.todaySessionDate = localDateKey();
           }
           saveProfile();
           let replyText = `✅ 已帮你调整计划：\n\n${result.changes.join('\n')}`;
@@ -1248,8 +1445,8 @@ async function sendChatMessage() {
 }
 
 function renderPage(derived) {
+  if (state.currentPage === 'onboarding') return renderOnboarding();
   if (state.currentPage === 'dashboard') return renderDashboard(derived);
-  if (state.currentPage === 'profile') return renderProfile();
   if (state.currentPage === 'today') return renderToday(derived);
   if (state.currentPage === 'record') return renderRecord(derived);
   if (state.currentPage === 'analysis') return renderAnalysis(derived);
@@ -1329,6 +1526,86 @@ root.addEventListener('click', (event) => {
   const button = event.target.closest('button');
   if (!button) return;
 
+  if ('onboardingNext' in button.dataset || 'onboardingFinish' in button.dataset) {
+    const form = document.getElementById('onboardingForm');
+    if (!form) return;
+    state.profile = { ...state.profile, ...normalizeProfilePatch(collectForm(form)) };
+    if ('onboardingFinish' in button.dataset) {
+      state.profileSetupComplete = true;
+      state.todaySessionConfirmed = false;
+      state.todayPreference = 'standard';
+      state.todaySessionDate = localDateKey();
+      state.guideStep = 0;
+      state.onboardingOriginalProfile = null;
+      try { localStorage.removeItem('fitness-guide-complete-v1'); } catch {}
+      saveProfile();
+      refreshHeader();
+      state.currentPage = 'dashboard';
+      renderToast('建档完成，今日训练计划已生成。');
+    } else {
+      state.onboardingStep = Math.min(3, state.onboardingStep + 1);
+    }
+    render();
+    return;
+  }
+
+  if ('onboardingBack' in button.dataset) {
+    state.onboardingStep = Math.max(1, state.onboardingStep - 1);
+    render();
+    return;
+  }
+
+  if ('onboardingCancel' in button.dataset) {
+    if (state.onboardingOriginalProfile) state.profile = state.onboardingOriginalProfile;
+    state.onboardingOriginalProfile = null;
+    state.currentPage = 'settings';
+    state.onboardingStep = 1;
+    render();
+    return;
+  }
+
+  if ('reassess' in button.dataset) {
+    state.onboardingOriginalProfile = JSON.parse(JSON.stringify(state.profile));
+    state.onboardingStep = 1;
+    state.currentPage = 'onboarding';
+    render();
+    return;
+  }
+
+  if ('guideSkip' in button.dataset) {
+    state.guideStep = null;
+    try { localStorage.setItem('fitness-guide-complete-v1', 'true'); } catch {}
+    render();
+    return;
+  }
+
+  if ('guideNext' in button.dataset) {
+    if (state.guideStep >= 2) {
+      state.guideStep = null;
+      try { localStorage.setItem('fitness-guide-complete-v1', 'true'); } catch {}
+      renderToast('引导已完成，随时从首页开始训练。');
+    } else {
+      state.guideStep += 1;
+    }
+    render();
+    return;
+  }
+
+  if (button.dataset.guidePage) {
+    state.currentPage = button.dataset.guidePage;
+    render();
+    return;
+  }
+
+  if ('startSession' in button.dataset) {
+    state.todaySessionConfirmed = true;
+    state.todaySessionDate = localDateKey();
+    saveProfile();
+    state.currentPage = 'record';
+    render();
+    return;
+  }
+
   if (button.dataset.jump || button.dataset.pageJump) {
     state.currentPage = button.dataset.jump || button.dataset.pageJump;
     render();
@@ -1340,18 +1617,10 @@ root.addEventListener('click', (event) => {
     if (!form) return;
     const patch = normalizeProfilePatch(collectForm(form));
     state.profile = { ...state.profile, ...patch };
-    if (patch.currentDayType) {
-      const { result, nextPlans } = modifyPlan(state.trainingPlans, {
-        action: 'change_day_type',
-        targetDate: localDateKey(),
-        targetDayType: patch.currentDayType,
-        reason: '用户在个人设置中修改今日训练日',
-      }, state.workoutLogs);
-      if (result.success) state.trainingPlans = nextPlans;
-    }
+    state.todaySessionConfirmed = false;
     saveProfile();
     refreshHeader();
-    renderToast('已保存，并根据新状态刷新建议。');
+    renderToast('资料已保存，请重新确认今日训练计划。');
     render();
     return;
   }
@@ -1359,6 +1628,9 @@ root.addEventListener('click', (event) => {
   if ('resetProfile' in button.dataset) {
     state.profile = defaultProfile();
     state.trainingPlans = createDefaultTrainingPlans(state.profile);
+    state.todayPreference = 'standard';
+    state.todaySessionConfirmed = false;
+    state.todaySessionDate = localDateKey();
     saveProfile();
     refreshHeader();
     renderToast('已恢复为示例档案。');
@@ -1390,7 +1662,10 @@ root.addEventListener('click', (event) => {
 
   if (button.dataset.pref) {
     state.todayPreference = button.dataset.pref;
-    renderToast('已按你的今日目标微调建议。');
+    state.todaySessionConfirmed = true;
+    state.todaySessionDate = localDateKey();
+    saveProfile();
+    renderToast('本次训练方案已更新，并同步到首页和训练记录。');
     render();
     return;
   }
@@ -1534,7 +1809,9 @@ function render() {
   try {
     derived = computeState();
     renderNav();
-    topbarTitle.textContent = navItems.find((item) => item.key === state.currentPage)?.label ?? '健身进阶推荐器';
+    topbarTitle.textContent = state.currentPage === 'onboarding'
+      ? '完成训练档案'
+      : (navItems.find((item) => item.key === state.currentPage)?.label ?? '健身进阶推荐器');
     root.innerHTML = `${renderPage(derived)}${renderDayDrawer()}`;
     mountMuscleMaps();
   } catch (err) {

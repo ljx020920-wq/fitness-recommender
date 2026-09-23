@@ -74,6 +74,7 @@ select option {
   position: sticky;
   top: 0;
   height: 100vh;
+  min-width: 0;
 }
 
 .brand {
@@ -110,6 +111,8 @@ select option {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .nav-item {
@@ -152,6 +155,8 @@ select option {
 
 .main {
   padding: 26px;
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 .topbar {
@@ -426,6 +431,216 @@ select option {
 .detail-label {
   color: var(--muted);
   margin-right: 10px;
+}
+
+.session-plan-summary {
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.025);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px 20px;
+  align-items: center;
+}
+
+.session-plan-summary.is-confirmed {
+  border-color: rgba(78, 213, 170, 0.38);
+  background: linear-gradient(135deg, rgba(78, 213, 170, 0.09), rgba(183, 255, 74, 0.035));
+}
+
+.session-plan-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.session-plan-main h4,
+.session-plan-main p {
+  margin: 5px 0 0;
+}
+
+.session-plan-main p,
+.session-plan-note {
+  color: var(--muted);
+}
+
+.session-plan-note {
+  grid-column: 1 / -1;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.session-plan-note strong {
+  color: var(--text);
+}
+
+.guide-card {
+  margin: 18px 0;
+  padding: 18px 20px;
+  border: 1px solid rgba(183, 255, 74, 0.28);
+  border-radius: 18px;
+  background: linear-gradient(100deg, rgba(183, 255, 74, 0.11), rgba(78, 213, 170, 0.04));
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: center;
+}
+
+.guide-card h3,
+.guide-card p {
+  margin: 6px 0 0;
+}
+
+.guide-card p {
+  color: var(--muted);
+}
+
+.guide-actions {
+  display: flex;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.onboarding-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(300px, .7fr);
+  gap: 18px;
+  max-width: 1180px;
+  margin: 5vh auto 0;
+  min-width: 0;
+}
+
+.onboarding-card,
+.onboarding-side {
+  min-width: 0;
+}
+
+.onboarding-card {
+  padding: 32px;
+}
+
+.onboarding-card h2 {
+  margin: 10px 0 0;
+  font-size: 30px;
+}
+
+.onboarding-progress {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 26px;
+}
+
+.onboarding-progress span {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .08);
+}
+
+.onboarding-progress span.active {
+  background: linear-gradient(90deg, var(--brand-2), var(--brand));
+}
+
+.onboarding-form {
+  margin-top: 26px;
+}
+
+.onboarding-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-end;
+  margin-top: 28px;
+}
+
+.onboarding-actions .actions {
+  margin-top: 0;
+}
+
+.onboarding-side {
+  align-self: stretch;
+  background: linear-gradient(160deg, rgba(78, 213, 170, .08), var(--panel));
+}
+
+.journey-list {
+  list-style: none;
+  margin: 24px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 22px;
+}
+
+.journey-list li {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.journey-list li > span,
+.settings-section legend > span {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: rgba(183, 255, 74, .12);
+  color: var(--brand);
+  font-weight: 800;
+  flex: 0 0 auto;
+}
+
+.journey-list strong,
+.journey-list small,
+.settings-section legend strong,
+.settings-section legend small {
+  display: block;
+}
+
+.journey-list small,
+.settings-section legend small {
+  color: var(--muted);
+  margin-top: 5px;
+  line-height: 1.5;
+}
+
+.settings-sections {
+  display: grid;
+  gap: 18px;
+  margin-top: 22px;
+}
+
+.settings-section {
+  margin: 0;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.settings-section legend {
+  padding: 0 10px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.settings-section .form-grid {
+  margin-top: 14px;
+}
+
+.cardio-addon-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  border-color: rgba(78, 213, 170, .32);
+}
+
+.cardio-addon-card p {
+  margin: 6px 0 0;
 }
 
 .metric-list {
@@ -1223,6 +1438,7 @@ select option {
     border-right: 0;
     border-bottom: 1px solid var(--line);
     padding: 16px;
+    overflow: hidden;
   }
 
   .brand {
@@ -1253,7 +1469,8 @@ select option {
   .cols-2,
   .summary-grid,
   .recommendation-card .recommendation-grid,
-  .volume-grid {
+  .volume-grid,
+  .onboarding-shell {
     grid-template-columns: 1fr;
   }
 
@@ -1320,9 +1537,39 @@ select option {
 
   .record-hero,
   .record-submit-bar,
-  .record-title-row {
+  .record-title-row,
+  .guide-card,
+  .cardio-addon-card,
+  .onboarding-actions {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .guide-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .session-plan-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .session-plan-summary .primary,
+  .guide-actions .primary {
+    width: 100%;
+  }
+
+  .session-plan-main {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .onboarding-shell {
+    margin-top: 0;
+  }
+
+  .onboarding-card {
+    padding: 22px;
   }
 
   .record-target {

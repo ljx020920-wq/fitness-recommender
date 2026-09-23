@@ -82,10 +82,10 @@ function recommendDelta(category, action) {
   return '优先加次数或增加 1 组';
 }
 
-export function buildDashboard(profile, workouts, plannedWorkout = null) {
+export function buildDashboard(profile, workouts, plannedWorkout = null, preference = 'standard') {
   const recovery = classifyRecovery(profile, workouts);
   const dayType = plannedWorkout?.dayType ?? profile.currentDayType;
-  const recommendations = buildWorkoutRecommendations(profile, workouts, dayType, 'standard', plannedWorkout);
+  const recommendations = buildWorkoutRecommendations(profile, workouts, dayType, preference, plannedWorkout);
 
   const improving = recommendations.exerciseRecommendations.filter((item) => item.action === 'add').map((item) => item.name);
   const stalled = recommendations.exerciseRecommendations.filter((item) => item.action === 'maintain').map((item) => item.name);
