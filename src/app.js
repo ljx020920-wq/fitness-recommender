@@ -518,11 +518,138 @@ function muscleRegions(muscleName) {
   return [];
 }
 
-function renderMuscleMap(muscles, key = 'default') {
+const EXERCISE_MUSCLE_TARGETS = [
+  {
+    match: /上斜.*(卧推|推举)/,
+    primaryLabels: ['胸大肌上束'],
+    secondaryLabels: ['肱三头肌', '三角肌前束'],
+    primaryTargets: ['chest-upper'],
+    secondaryTargets: ['triceps', 'shoulder-front'],
+  },
+  {
+    match: /卧推|双杠臂屈伸/,
+    primaryLabels: ['胸大肌'],
+    secondaryLabels: ['肱三头肌', '三角肌前束'],
+    primaryTargets: ['chest'],
+    secondaryTargets: ['triceps', 'shoulder-front'],
+  },
+  {
+    match: /肩推|推举/,
+    primaryLabels: ['三角肌前束', '三角肌中束'],
+    secondaryLabels: ['肱三头肌', '上斜方肌'],
+    primaryTargets: ['shoulder-front', 'shoulder-side'],
+    secondaryTargets: ['triceps', 'traps-upper'],
+  },
+  {
+    match: /侧平举/,
+    primaryLabels: ['三角肌中束'],
+    secondaryLabels: ['上斜方肌'],
+    primaryTargets: ['shoulder-side'],
+    secondaryTargets: ['traps-upper'],
+  },
+  {
+    match: /引体|高位下拉/,
+    primaryLabels: ['背阔肌'],
+    secondaryLabels: ['肱二头肌', '菱形肌', '三角肌后束'],
+    primaryTargets: ['lats'],
+    secondaryTargets: ['biceps', 'traps-mid', 'traps-lower', 'deltoid-rear'],
+  },
+  {
+    match: /划船/,
+    primaryLabels: ['背阔肌', '中背部'],
+    secondaryLabels: ['肱二头肌', '三角肌后束'],
+    primaryTargets: ['lats-mid', 'traps-mid', 'traps-lower'],
+    secondaryTargets: ['biceps', 'deltoid-rear'],
+  },
+  {
+    match: /二头弯举|杠铃弯举|哑铃弯举/,
+    primaryLabels: ['肱二头肌'],
+    secondaryLabels: ['肱肌', '前臂屈肌'],
+    primaryTargets: ['biceps', 'brachialis'],
+    secondaryTargets: ['forearm-flexors'],
+  },
+  {
+    match: /罗马尼亚硬拉/,
+    primaryLabels: ['腘绳肌', '臀大肌'],
+    secondaryLabels: ['下背部', '前臂'],
+    primaryTargets: ['hamstrings', 'gluteus-maximus'],
+    secondaryTargets: ['lower-back', 'forearm'],
+  },
+  {
+    match: /深蹲/,
+    primaryLabels: ['股四头肌', '臀大肌'],
+    secondaryLabels: ['腘绳肌', '核心'],
+    primaryTargets: ['quads', 'gluteus-maximus'],
+    secondaryTargets: ['hamstrings', 'abs', 'oblique', 'lower-back'],
+  },
+  {
+    match: /腿举/,
+    primaryLabels: ['股四头肌'],
+    secondaryLabels: ['臀大肌', '腘绳肌'],
+    primaryTargets: ['quads'],
+    secondaryTargets: ['gluteus-maximus', 'hamstrings'],
+  },
+  {
+    match: /腿弯举/,
+    primaryLabels: ['腘绳肌'],
+    secondaryLabels: ['腓肠肌'],
+    primaryTargets: ['hamstrings'],
+    secondaryTargets: ['calves-gastroc'],
+  },
+];
+
+function muscleTargetsFromName(muscleName) {
+  const name = String(muscleName ?? '');
+  if (/小腿/.test(name)) return ['calves', 'tibialis'];
+  if (/腿后侧|腘绳/.test(name)) return ['hamstrings'];
+  if (/股四/.test(name)) return ['quads'];
+  if (/臀/.test(name)) return ['gluteus'];
+  if (/腿/.test(name)) return ['quads', 'hamstrings', 'gluteus-maximus'];
+  if (/斜方/.test(name)) return ['traps'];
+  if (/背阔|背/.test(name)) return ['lats', 'traps-mid', 'traps-lower', 'deltoid-rear'];
+  if (/肱三/.test(name)) return ['triceps'];
+  if (/肱二/.test(name)) return ['biceps', 'brachialis'];
+  if (/肩中/.test(name)) return ['shoulder-side'];
+  if (/肩前/.test(name)) return ['shoulder-front'];
+  if (/肩后/.test(name)) return ['deltoid-rear'];
+  if (/肩/.test(name)) return ['shoulder-front', 'shoulder-side', 'deltoid-rear'];
+  if (/胸上/.test(name)) return ['chest-upper'];
+  if (/胸/.test(name)) return ['chest'];
+  if (/核心|腹/.test(name)) return ['abs', 'oblique', 'serratus'];
+  return [];
+}
+
+function exerciseMuscleTargets(exerciseName, fallbackMuscle) {
+  const matched = EXERCISE_MUSCLE_TARGETS.find((item) => item.match.test(String(exerciseName ?? '')));
+  if (matched) return matched;
+  const fallbackLabel = fallbackMuscle || '主要训练区域';
+  return {
+    primaryLabels: [fallbackLabel],
+    secondaryLabels: [],
+    primaryTargets: muscleTargetsFromName(fallbackMuscle),
+    secondaryTargets: [],
+    isFallback: true,
+  };
+}
+
+function renderMuscleMap(muscles, key = 'default', options = {}) {
+  const primaryTargets = options.primaryTargets ?? muscles.flatMap((name) => muscleTargetsFromName(name));
+  const secondaryTargets = options.secondaryTargets ?? [];
+  const primaryLabels = options.primaryLabels ?? muscles;
+  const secondaryLabels = options.secondaryLabels ?? [];
+  const compactClass = options.compact ? ' compact-map' : '';
   return `
-    <div class="muscle-map-host" data-map-key="${key}" data-muscles="${encodeURIComponent(JSON.stringify(muscles))}">
-      <div class="body-view"><span>FRONT · 正面</span><div class="body-chart" data-body-front></div></div>
-      <div class="body-view"><span>BACK · 背面</span><div class="body-chart" data-body-back></div></div>
+    <div class="muscle-map-host${compactClass}" data-map-key="${escapeAttribute(key)}" data-current-view="front" data-interactive="${options.interactive === false ? 'false' : 'true'}" data-primary-targets="${encodeURIComponent(JSON.stringify(primaryTargets))}" data-secondary-targets="${encodeURIComponent(JSON.stringify(secondaryTargets))}">
+      <div class="body-view-tabs" role="group" aria-label="切换人体视角">
+        <button type="button" class="body-view-tab active" data-map-view="front">正面</button>
+        <button type="button" class="body-view-tab" data-map-view="back">背面</button>
+      </div>
+      <div class="body-view body-view-front"><span>FRONT · 正面</span><div class="body-chart" data-body-front></div></div>
+      <div class="body-view body-view-back"><span>BACK · 背面</span><div class="body-chart" data-body-back></div></div>
+      ${options.showLegend ? `<div class="muscle-map-legend">
+        <div><i class="legend-swatch primary-swatch"></i><span>主要：${primaryLabels.map(escapeHtml).join('、') || '主要训练区域'}</span></div>
+        ${secondaryLabels.length ? `<div><i class="legend-swatch secondary-swatch"></i><span>辅助：${secondaryLabels.map(escapeHtml).join('、')}</span></div>` : ''}
+      </div>` : ''}
     </div>
   `;
 }
@@ -540,6 +667,42 @@ function muscleGroupFromSvgId(id) {
   return 'other';
 }
 
+function muscleIdMatchesTarget(id, target) {
+  const value = String(id ?? '').toLowerCase();
+  const token = String(target ?? '').toLowerCase();
+  const aliases = {
+    chest: /chest/,
+    'chest-upper': /chest-upper/,
+    lats: /lats/,
+    'lats-mid': /lats-mid/,
+    traps: /traps/,
+    'traps-upper': /traps-upper/,
+    'traps-mid': /traps-mid/,
+    'traps-lower': /traps-lower/,
+    'lower-back': /lower-back/,
+    'shoulder-front': /shoulder-front/,
+    'shoulder-side': /shoulder-side/,
+    'deltoid-rear': /deltoid-rear/,
+    biceps: /biceps/,
+    triceps: /triceps/,
+    brachialis: /brachialis/,
+    forearm: /forearm/,
+    'forearm-flexors': /forearm-flexors/,
+    abs: /abs-/,
+    oblique: /oblique/,
+    serratus: /serratus/,
+    gluteus: /gluteus/,
+    'gluteus-maximus': /gluteus-maximus/,
+    quads: /quads/,
+    hamstrings: /hamstrings/,
+    adductors: /adductors/,
+    calves: /calves/,
+    'calves-gastroc': /calves-gastroc/,
+    tibialis: /tibialis/,
+  };
+  return aliases[token]?.test(value) ?? value.includes(token);
+}
+
 function mountMuscleMaps() {
   mountedMuscleCharts.forEach((chart) => chart.destroy?.());
   mountedMuscleCharts = [];
@@ -550,14 +713,16 @@ function mountMuscleMaps() {
   if (library.INTENSITY_COLORS) palette.forEach((color, index) => { library.INTENSITY_COLORS[index] = color; });
 
   document.querySelectorAll('.muscle-map-host').forEach((host) => {
-    const muscleNames = JSON.parse(decodeURIComponent(host.dataset.muscles || '%5B%5D'));
-    const activeGroups = new Set(muscleNames.flatMap((name) => muscleRegions(name)));
+    const primaryTargets = JSON.parse(decodeURIComponent(host.dataset.primaryTargets || '%5B%5D'));
+    const secondaryTargets = JSON.parse(decodeURIComponent(host.dataset.secondaryTargets || '%5B%5D'));
     const definitions = [...library.FRONT_MUSCLES, ...library.BACK_MUSCLES];
     const bodyState = Object.fromEntries(definitions.map((definition) => {
-      const group = muscleGroupFromSvgId(definition.id);
-      return [definition.id, { intensity: activeGroups.has(group) ? 10 : 0, selected: false }];
+      const isPrimary = primaryTargets.some((target) => muscleIdMatchesTarget(definition.id, target));
+      const isSecondary = secondaryTargets.some((target) => muscleIdMatchesTarget(definition.id, target));
+      return [definition.id, { intensity: isPrimary ? 10 : isSecondary ? 6 : 0, selected: false }];
     }));
     const selectMuscle = (id) => {
+      if (host.dataset.interactive === 'false') return;
       const group = muscleGroupFromSvgId(id);
       const button = document.querySelector(`[data-analysis-filter="${group}"]`);
       if (button) button.click();
@@ -566,6 +731,12 @@ function mountMuscleMaps() {
       new library.BodyChart(host.querySelector('[data-body-front]'), { view: library.ViewSide.FRONT, bodyState, ariaLabel: '人体正面训练肌群', onMuscleClick: selectMuscle }),
       new library.BodyChart(host.querySelector('[data-body-back]'), { view: library.ViewSide.BACK, bodyState, ariaLabel: '人体背面训练肌群', onMuscleClick: selectMuscle }),
     );
+    host.querySelectorAll('[data-map-view]').forEach((button) => {
+      button.addEventListener('click', () => {
+        host.dataset.currentView = button.dataset.mapView;
+        host.querySelectorAll('[data-map-view]').forEach((item) => item.classList.toggle('active', item === button));
+      });
+    });
   });
 }
 
@@ -1194,7 +1365,7 @@ function renderAnalysis(derived) {
             <div class="big-number small">${row.volume}</div>
             <span class="status-pill ${row.level === '偏低' ? 'warning' : row.level === '偏高' ? 'neutral' : 'success'}">${row.level}</span>
             <div class="progress-track"><div class="progress-fill" style="width: ${row.progress}%"></div></div>
-            <div class="muted">有效组：${row.effectiveSets} / 20 · ${row.note}</div>
+            <div class="muted volume-note">有效组 ${row.effectiveSets}/20 · ${row.note.replace('距最低有效组数还差', '还差').replace('已超过建议上限，注意恢复', '超过建议范围').replace('处于理想区间', '理想区间')}</div>
           </div>
         `).join('')}
       </div>
@@ -1211,38 +1382,57 @@ function renderAnalysis(derived) {
       <div class="analysis-filter-row" aria-label="按肌群筛选动作">
         ${ANALYSIS_FILTERS.map((filter) => `<button type="button" class="filter-button ${state.analysisMuscleFilter === filter.key ? 'active' : ''}" data-analysis-filter="${filter.key}">${filter.label}</button>`).join('')}
       </div>
-      ${filteredExercises.map((item) => `
-        <article class="card recommendation-card">
-          <div class="card-header align-start">
-            <div>
-              <div class="eyebrow">${item.muscle} · 当前 ${item.latestWeight} kg</div>
-              <h3>${item.name}</h3>
+      ${filteredExercises.map((item, index) => {
+        const targets = exerciseMuscleTargets(item.name, item.muscle);
+        return `
+          <article class="card recommendation-card exercise-analysis-card">
+            <div class="exercise-analysis-layout">
+              <div class="exercise-analysis-copy">
+                <div class="card-header align-start">
+                  <div>
+                    <div class="eyebrow">${item.muscle} · 当前 ${item.latestWeight} kg</div>
+                    <h3>${item.name}</h3>
+                  </div>
+                  <div class="chip-row">
+                    <span class="chip">${item.trendLabel}</span>
+                    <span class="status-pill ${badgeClass(item.actionLabel)}">${item.actionLabel}</span>
+                  </div>
+                </div>
+                ${item.progressHint ? `<div class="hint-bubble wide">${item.progressHint}</div>` : ''}
+                <div class="detail-box">
+                  <div>
+                    <span class="detail-label">动作要领</span>
+                    <ul class="bullet-list compact">
+                      ${item.standard.keyPoints.map((point) => `<li>${point}</li>`).join('')}
+                    </ul>
+                  </div>
+                  <div>
+                    <span class="detail-label">常见问题</span>
+                    <ul class="bullet-list compact">
+                      ${item.standard.commonIssues.map((issue) => `<li>${issue}</li>`).join('')}
+                    </ul>
+                  </div>
+                </div>
+                <div class="actions inline">
+                  <a class="primary ghost" href="${item.standard.tutorial}" target="_blank" rel="noreferrer">查看动作讲解</a>
+                </div>
+              </div>
+              <aside class="exercise-muscle-panel" aria-label="${escapeAttribute(item.name)}训练肌群">
+                <div class="eyebrow">训练肌群 · ${targets.isFallback ? '主要训练区域' : '动作映射'}</div>
+                ${renderMuscleMap([], `exercise-${index}-${item.name}`, {
+                  compact: true,
+                  interactive: false,
+                  showLegend: true,
+                  primaryTargets: targets.primaryTargets,
+                  secondaryTargets: targets.secondaryTargets,
+                  primaryLabels: targets.primaryLabels,
+                  secondaryLabels: targets.secondaryLabels,
+                })}
+              </aside>
             </div>
-            <div class="chip-row">
-              <span class="chip">${item.trendLabel}</span>
-              <span class="status-pill ${badgeClass(item.actionLabel)}">${item.actionLabel}</span>
-            </div>
-          </div>
-          ${item.progressHint ? `<div class="hint-bubble wide">${item.progressHint}</div>` : ''}
-          <div class="detail-box">
-            <div>
-              <span class="detail-label">动作要领</span>
-              <ul class="bullet-list compact">
-                ${item.standard.keyPoints.map((point) => `<li>${point}</li>`).join('')}
-              </ul>
-            </div>
-            <div>
-              <span class="detail-label">常见问题</span>
-              <ul class="bullet-list compact">
-                ${item.standard.commonIssues.map((issue) => `<li>${issue}</li>`).join('')}
-              </ul>
-            </div>
-          </div>
-          <div class="actions inline">
-            <a class="primary ghost" href="${item.standard.tutorial}" target="_blank" rel="noreferrer">查看动作讲解</a>
-          </div>
-        </article>
-      `).join('') || '<article class="card"><p>这个部位目前还没有已完成的训练记录。</p></article>'}
+          </article>
+        `;
+      }).join('') || '<article class="card"><p>这个部位目前还没有已完成的训练记录。</p></article>'}
     </section>
   `;
 }

@@ -1603,6 +1603,10 @@ select option {
   margin: 12px auto 0;
 }
 
+.body-view-tabs {
+  display: none;
+}
+
 .body-view {
   min-width: 0;
   border: 1px solid var(--line);
@@ -1656,6 +1660,50 @@ select option {
 .body-chart [role="button"]:hover,
 .body-chart path:hover {
   filter: brightness(1.18);
+}
+
+.compact-map {
+  margin-top: 10px;
+}
+
+.compact-map .body-view {
+  padding: 8px 6px 2px;
+}
+
+.compact-map .body-chart {
+  height: 270px;
+}
+
+.muscle-map-legend {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 7px;
+  padding: 2px 4px 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.muscle-map-legend > div {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.legend-swatch {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  margin-top: 4px;
+  border-radius: 3px;
+}
+
+.primary-swatch {
+  background: var(--brand);
+}
+
+.secondary-swatch {
+  background: #69a550;
 }
 
 /* 实际训练记录 */
@@ -1755,6 +1803,36 @@ select option {
   gap: 8px;
   overflow-x: auto;
   padding: 2px 2px 12px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.analysis-filter-row::-webkit-scrollbar {
+  display: none;
+}
+
+.exercise-analysis-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(300px, .85fr);
+  gap: 24px;
+  align-items: stretch;
+}
+
+.exercise-analysis-copy {
+  min-width: 0;
+}
+
+.exercise-analysis-copy .chip-row {
+  justify-content: flex-end;
+  margin-top: 0;
+}
+
+.exercise-muscle-panel {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(3, 14, 10, .38);
 }
 
 .filter-button {
@@ -1854,9 +1932,12 @@ select option {
   .cols-2,
   .summary-grid,
   .recommendation-card .recommendation-grid,
-  .volume-grid,
   .onboarding-shell {
     grid-template-columns: 1fr;
+  }
+
+  .volume-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .week-strip {
@@ -1996,7 +2077,84 @@ select option {
   }
 
   .body-chart {
-    height: 400px;
+    height: clamp(340px, 102vw, 430px);
+  }
+
+  .muscle-map-host {
+    grid-template-columns: 1fr;
+  }
+
+  .body-view-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: rgba(255,255,255,.025);
+  }
+
+  .body-view-tab {
+    min-height: 40px;
+    border-radius: 9px;
+    color: var(--muted);
+    background: transparent;
+  }
+
+  .body-view-tab.active {
+    color: #0b140e;
+    background: var(--brand);
+  }
+
+  .muscle-map-host .body-view {
+    display: none;
+  }
+
+  .muscle-map-host[data-current-view="front"] .body-view-front,
+  .muscle-map-host[data-current-view="back"] .body-view-back {
+    display: block;
+  }
+
+  .compact-map .body-chart {
+    height: 230px;
+  }
+
+  .exercise-analysis-layout {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .exercise-muscle-panel {
+    padding: 14px;
+  }
+
+  .volume-grid {
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .volume-card {
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .volume-card .big-number.small {
+    margin: 6px 0;
+    font-size: 28px;
+  }
+
+  .volume-card .status-pill {
+    padding: 6px 9px;
+    font-size: 12px;
+  }
+
+  .volume-card .progress-track {
+    margin: 8px 0 5px;
+  }
+
+  .volume-card .muted {
+    font-size: 12px;
+    line-height: 1.45;
   }
 
   .day-drawer-header,
@@ -2012,12 +2170,29 @@ select option {
 }
 
 @media (max-width: 460px) {
-  .record-fields,
-  .muscle-map-host {
+  .record-fields {
     grid-template-columns: 1fr;
   }
 
   .body-chart {
-    height: 460px;
+    height: min(420px, 112vw);
+  }
+
+  .compact-map .body-chart {
+    height: 220px;
+  }
+
+  .exercise-analysis-card {
+    padding: 18px;
+  }
+
+  .exercise-analysis-copy .card-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .exercise-analysis-copy .chip-row {
+    justify-content: flex-start;
+    margin-top: 2px;
   }
 }

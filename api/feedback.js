@@ -13,7 +13,7 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { userMessage, aiReply, rating, reason, profile, workouts, trainingPlans, workoutLogs, mode } = req.body || {};
+    const { userMessage, aiReply, rating, reason, mode } = req.body || {};
     const entry = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
       timestamp: new Date().toISOString(),
@@ -23,9 +23,6 @@ module.exports = async function handler(req, res) {
       aiReply: aiReply || '',
       mode: mode || 'unknown',
       reason: reason || '',
-      profileSnapshot: profile || {},
-      workoutsSnapshot: workoutLogs || workouts || [],
-      trainingPlansSnapshot: trainingPlans || [],
     };
 
     // 在 Vercel Function Logs 中输出完整反馈 JSON

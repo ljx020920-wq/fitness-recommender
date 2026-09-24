@@ -257,7 +257,7 @@ app.post('/api/chat', async (req, res) => {
 
 app.post('/api/feedback', async (req, res) => {
   try {
-    const { userMessage, aiReply, rating, reason, profile, workouts, trainingPlans, workoutLogs, mode } = req.body || {};
+    const { userMessage, aiReply, rating, reason, mode } = req.body || {};
     const entry = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
       timestamp: new Date().toISOString(),
@@ -267,9 +267,6 @@ app.post('/api/feedback', async (req, res) => {
       aiReply: aiReply || '',
       mode: mode || 'unknown',
       reason: reason || '',
-      profileSnapshot: profile || {},
-      workoutsSnapshot: workoutLogs || workouts || [],
-      trainingPlansSnapshot: trainingPlans || [],
     };
 
     const logPath = path.join(__dirname, 'feedback-log.jsonl');

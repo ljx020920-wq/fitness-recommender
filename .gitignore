@@ -6,3 +6,5 @@ server/feedback-log.jsonl
 .env
 .env.local
 /forge-ai-redcowork.zip
+/PROJECT_CONTEXT.md
+/outputs/
